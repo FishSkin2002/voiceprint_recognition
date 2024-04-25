@@ -177,10 +177,9 @@ class voiceprint_recognition:
             labels = labels.to(device=self.device)
             features = self.feature_extractor(waveforms)
             identities = self.model.backbone(features)
-            outputs = self.model.softmax(identities.detach().requires_grad_())
+            outputs = self.model.softmax(identities)
             # outputs = self.model(features)
             loss_iden = self.criterion(torch.log(outputs), labels)
-            loss_iden.backward()
             # if labels.shape[0] % 2 == 1:
             #     identities = identities[0:-1]
             #     labels = labels[0:-1]
@@ -194,8 +193,8 @@ class voiceprint_recognition:
             ignore_matrix = torch.min(cosine_matrix, torch.zeros_like(cosine_matrix) + 0.5)
             labels_matrix = torch.where(labels_matrix, torch.ones_like(labels_matrix), ignore_matrix)
             loss_veri = self.criterion_veri(cosine_matrix, labels_matrix)
-            loss_veri.backward()
             loss = loss_iden + loss_veri
+            loss.backward()
             self.optimizer.step()
             self.scheduler.step()
             all_loss.append(loss)
