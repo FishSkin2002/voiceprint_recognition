@@ -21,7 +21,9 @@ class voiceprint_recognition:
                  use_gpu=True,
                  use_model='ECAPA_TDNN',
                  use_feature_extraction='MFCC',
-                 use_loss='NLLLoss',
+                 use_veri_loss='MSELoss',
+                 use_iden_loss='NLLLoss',
+                 veri_iden_loss_weight=(1, 1),
                  use_optimizer='Adam',
                  use_lr_scheduler='CyclicLR',
                  data_path='./dataset/VoxCeleb1',
@@ -41,7 +43,9 @@ class voiceprint_recognition:
         self.writer = SummaryWriter(os.path.join(log_dir, use_model))
         self.use_model = use_model
         self.use_feature_extraction = use_feature_extraction
-        self.use_loss = use_loss
+        self.use_veri_loss = use_veri_loss
+        self.use_iden_loss = use_iden_loss
+        self.veri_iden_loss_weight = veri_iden_loss_weight
         self.use_optimizer = use_optimizer
         self.use_lr_scheduler = use_lr_scheduler
         self.data_path = data_path
@@ -56,13 +60,13 @@ class voiceprint_recognition:
         self.test_loader = None
         self.feature_extractor = None
         self.model = None
-        self.criterion = None
+        self.criterion_veri = None
+        self.criterion_iden = None
         self.optimizer = None
         self.scheduler = None
         self.train_epoch = train_epoch
         self.total_train_step = 0
         self.total_dev_step = 0
-        self.criterion_veri = nn.MSELoss()
         self.save_model_path = save_model_path
 
     def train(self):
@@ -95,7 +99,7 @@ class voiceprint_recognition:
                                      num_workers=16,
                                      pin_memory=True)
         self.test_loader = DataLoader(self.test_set,
-                                      batch_size=1,
+                                      batch_size=self.batch_size,
                                       shuffle=True,
                                       num_workers=16,
                                       pin_memory=True)
@@ -131,19 +135,28 @@ class voiceprint_recognition:
 
     def __set_criterion(self):
         print('正在加载损失函数……')
-        if self.use_loss == 'NLLLoss':
-            self.criterion = nn.NLLLoss()
-        elif self.use_loss == 'CrossEntropyLoss':
-            self.criterion = nn.CrossEntropyLoss()
-        elif self.use_loss == 'MSELoss':
-            self.criterion = nn.MSELoss()
-        elif self.use_loss == 'CosineEmbeddingLoss':
-            self.criterion = nn.CosineEmbeddingLoss(margin=0.5)
+        if self.use_veri_loss == 'MSELoss':
+            self.criterion_veri = nn.MSELoss()
+        elif self.use_veri_loss == 'CosineEmbeddingLoss':
+            self.criterion_veri = nn.CosineEmbeddingLoss(margin=0.5)
         else:
-            raise ValueError(f'不支持{self.use_loss}损失函数')
-        self.criterion = self.criterion.to(device=self.device)
+            raise ValueError(f'不支持{self.use_veri_loss}损失函数')
+
+        if self.use_iden_loss == 'NLLLoss':
+            self.criterion_iden = nn.NLLLoss()
+        elif self.use_iden_loss == 'CrossEntropyLoss':
+            self.criterion_iden = nn.CrossEntropyLoss()
+        elif self.use_iden_loss == 'MSELoss':
+            self.criterion_iden = nn.MSELoss()
+        elif self.use_iden_loss == 'CosineEmbeddingLoss':
+            self.criterion_iden = nn.CosineEmbeddingLoss(margin=0.5)
+        else:
+            raise ValueError(f'不支持{self.use_iden_loss}损失函数')
+
         self.criterion_veri = self.criterion_veri.to(device=self.device)
-        print(f'损失函数{self.use_loss}加载完成')
+        self.criterion_iden = self.criterion_iden.to(device=self.device)
+        print(f'Speaker Verification损失函数{self.use_veri_loss}和'
+              f'Speaker Identification损失函数{self.use_iden_loss}加载完成')
 
     def __set_optimizer(self):
         print('正在加载优化器……')
@@ -155,6 +168,7 @@ class voiceprint_recognition:
         else:
             raise ValueError(f'不支持{self.use_optimizer}优化器')
         print(f'优化器{self.use_optimizer}加载完成')
+
         print('正在加载学习率衰减方法……')
         if self.use_lr_scheduler == 'CyclicLR':
             self.scheduler = optim.lr_scheduler.CyclicLR(self.optimizer,
@@ -178,22 +192,13 @@ class voiceprint_recognition:
             features = self.feature_extractor(waveforms)
             identities = self.model.backbone(features)
             outputs = self.model.softmax(identities)
-            # outputs = self.model(features)
-            loss_iden = self.criterion(torch.log(outputs), labels)
-            # if labels.shape[0] % 2 == 1:
-            #     identities = identities[0:-1]
-            #     labels = labels[0:-1]
-            # identities = torch.chunk(identities, 2, 0)
-            # labels = torch.chunk(labels, 2, 0)
-            # labels = torch.eq(labels[0], labels[1]).to(dtype=torch.float)
-            # labels[labels == 0] = -1
-            # cosine = F.cosine_similarity(identities[0], identities[1], dim=-1)
+            loss_iden = self.criterion_iden(torch.log(outputs), labels) * torch.tensor(self.veri_iden_loss_weight[1])
             cosine_matrix = F.cosine_similarity(identities.unsqueeze(0), identities.unsqueeze(1), dim=-1)
             labels_matrix = torch.eq(labels.unsqueeze(0), labels.unsqueeze(1))
             ignore_matrix = torch.min(cosine_matrix, torch.zeros_like(cosine_matrix) + 0.5)
             labels_matrix = torch.where(labels_matrix, torch.ones_like(labels_matrix), ignore_matrix)
-            loss_veri = self.criterion_veri(cosine_matrix, labels_matrix)
-            loss = loss_iden + loss_veri
+            loss_veri = self.criterion_veri(cosine_matrix, labels_matrix) * torch.tensor(self.veri_iden_loss_weight[0])
+            loss = (loss_veri + loss_iden) / torch.sum(torch.tensor(self.veri_iden_loss_weight))
             loss.backward()
             self.optimizer.step()
             self.scheduler.step()
@@ -239,12 +244,6 @@ class voiceprint_recognition:
                 labels_matrix = torch.eq(labels.unsqueeze(0), labels.unsqueeze(1))
                 all_score = score_matrix.view(-1)
                 all_labels = labels_matrix.view(-1)
-                # if labels.shape[0] % 2 == 1:
-                #     labels = labels[0:-1]
-                #     identities = identities[0:-1]
-                # identities = torch.chunk(identities, 2, dim=0)
-                # labels = list(torch.chunk(labels, 2, dim=0))
-                # score = F.cosine_similarity(identities[0], identities[1], dim=1)
                 if all_score is None:
                     all_score = score_matrix.view(-1)
                 else:
@@ -258,15 +257,9 @@ class voiceprint_recognition:
             acc = sum(acc) / len(acc)
             fpr, fnr, all_score = fpr_fnr(all_score, all_labels)
             eer, threshold = eer_threshold(fpr, fnr, all_score)
-            try:
-                print(f'Speaker Identification ACC: {acc:.2%}\n'
-                      f'Speaker Verification EER: {eer:.2%}, '
-                      f'threshold: {threshold:.4f}')
-            except:
-                print('出现问题')
-                print('acc', type(acc), acc)
-                print('eer', type(eer), eer)
-                print('threshold', type(threshold), threshold)
+            print(f'Speaker Identification ACC: {acc:.2%}\n'
+                  f'Speaker Verification EER: {eer:.2%}, '
+                  f'threshold: {threshold:.4f}')
             self.total_dev_step += 1
             self.writer.add_scalar(tag='dev/identification/ACC',
                                    scalar_value=acc,
@@ -277,55 +270,3 @@ class voiceprint_recognition:
             self.writer.add_scalar(tag='dev/verification/threshold',
                                    scalar_value=threshold,
                                    global_step=self.total_dev_step)
-    # def evaluate(self):
-    #     print('测试阶段开始……')
-    #     eval_model = self.models.architecture
-    #     eval_model.eval()
-    #     dev_identities = None
-    #     dev_labels = None
-    #     test_identities = None
-    #     test_labels = None
-    #     with torch.no_grad():
-    #         print('正在导入注册声纹特征……')
-    #         for waveforms, labels in self.dev_loader:
-    #             waveforms = waveforms.to(device=self.device)
-    #             labels = labels.to(device=self.device)
-    #             features = self.feature_extractor(waveforms)
-    #             identities = eval_model(features)
-    #             if dev_identities is None:
-    #                 dev_identities = identities
-    #             else:
-    #                 dev_identities = torch.cat([dev_identities, identities], dim=0)
-    #             if dev_labels is None:
-    #                 dev_labels = labels
-    #             else:
-    #                 dev_labels = torch.cat([dev_labels, labels], dim=0)
-    #         print('注册声纹特征导入完成')
-    #         print(dev_identities.shape, dev_labels.shape)
-    #         print('正在导入验证声纹特征……')
-    #         for waveforms, labels in self.test_loader:
-    #             waveforms = waveforms.to(device=self.device)
-    #             labels = labels.to(device=self.device)
-    #             features = self.feature_extractor(waveforms)
-    #             identities = eval_model(features)
-    #             if test_identities is None:
-    #                 test_identities = identities
-    #             else:
-    #                 test_identities = torch.cat([test_identities, identities], dim=0)
-    #             if test_labels is None:
-    #                 test_labels = labels
-    #             else:
-    #                 test_labels = torch.cat([test_labels, labels], dim=0)
-    #         print('验证声纹特征导入完成')
-    #         print(test_identities.shape, test_labels.shape)
-    #         print('正在计算模型指标……')
-    #         # dev_labels = dev_labels.to(device='cpu')
-    #         # test_labels = test_labels.to(device='cpu')
-    #         # dev_identities = dev_identities.to(device='cpu')
-    #         # test_identities = test_identities.to(device='cpu')
-    #         score = F.cosine_similarity(dev_identities.unsqueeze(0), test_identities.unsqueeze(1), dim=2)
-    #         score = score.reshape(-1)
-    #         one_hot = F.one_hot(test_labels, len(dev_labels))
-    #         one_hot = one_hot.reshape(-1)
-    #         eer, threshold = eer_threshold(score, one_hot)
-    #         return eer, threshold
