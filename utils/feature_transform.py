@@ -3,10 +3,13 @@ from typing import Optional
 import torch
 from torch import nn
 import torchaudio.transforms as T
+import torchaudio.functional as F
 
 
 class feature_transform(nn.Module):
     def __init__(self,
+                 add_noise=True,
+                 snr=0,
                  use_feature_extraction='MFCC',
                  device=torch.device('cuda'),
                  sample_rate=16000,
@@ -15,6 +18,8 @@ class feature_transform(nn.Module):
                  use_specaugument=False,
                  sakwargs: Optional[dict] = None):
         super().__init__()
+        self.add_noise = add_noise
+        self.snr = snr
         self.use_feature_extraction = use_feature_extraction
         self.device = device
         self.sample_rate = sample_rate
@@ -51,6 +56,8 @@ class feature_transform(nn.Module):
 
     def forward(self, x):
         with torch.no_grad():
+            if self.add_noise:
+                x = F.add_noise(x, torch.randn_like(x), torch.tensor([self.snr]))
             x = self.transform(x)
             if self.use_feature_extraction == 'MFCC':
                 if self.use_mfcc_cms:
