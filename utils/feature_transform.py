@@ -9,7 +9,7 @@ import torchaudio.functional as F
 class feature_transform(nn.Module):
     def __init__(self,
                  add_noise=True,
-                 snr=0,
+                 snr=10,
                  use_feature_extraction='MFCC',
                  device=torch.device('cuda'),
                  sample_rate=16000,
