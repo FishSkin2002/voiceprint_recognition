@@ -62,7 +62,7 @@ class voiceprint_recognition:
         self.train_epoch = train_epoch
         self.total_train_step = 0
         self.total_dev_step = 0
-        # self.criterion_iden = nn.NLLLoss()
+        self.criterion_veri = nn.MSELoss()
         self.save_model_path = save_model_path
 
     def train(self):
@@ -142,7 +142,7 @@ class voiceprint_recognition:
         else:
             raise ValueError(f'不支持{self.use_loss}损失函数')
         self.criterion = self.criterion.to(device=self.device)
-        # self.criterion_iden = self.criterion_iden.to(device=self.device)
+        self.criterion_veri = self.criterion_veri.to(device=self.device)
         print(f'损失函数{self.use_loss}加载完成')
 
     def __set_optimizer(self):
@@ -160,6 +160,7 @@ class voiceprint_recognition:
             self.scheduler = optim.lr_scheduler.CyclicLR(self.optimizer,
                                                          base_lr=1e-8,
                                                          max_lr=1e-3,
+                                                         step_size_up=4000,
                                                          mode='triangular2',
                                                          cycle_momentum=False)
         else:
@@ -175,19 +176,25 @@ class voiceprint_recognition:
             waveforms = waveforms.to(device=self.device)
             labels = labels.to(device=self.device)
             features = self.feature_extractor(waveforms)
-            # identities = self.model.backbone(features)
-            # outputs = self.model.softmax(identities)
-            outputs = self.model(features)
-            loss = self.criterion(torch.log(outputs), labels)
+            identities = self.model.backbone(features)
+            outputs = self.model.softmax(identities.detach().requires_grad_())
+            # outputs = self.model(features)
+            loss_iden = self.criterion(torch.log(outputs), labels)
+            loss_iden.backward()
             # if labels.shape[0] % 2 == 1:
             #     identities = identities[0:-1]
             #     labels = labels[0:-1]
             # identities = torch.chunk(identities, 2, 0)
             # labels = torch.chunk(labels, 2, 0)
-            # labels = torch.eq(labels[0], labels[1]).to(dtype=torch.int)
+            # labels = torch.eq(labels[0], labels[1]).to(dtype=torch.float)
             # labels[labels == 0] = -1
-            # loss += self.criterion(identities[0], identities[1], labels)
-            loss.backward()
+            # cosine = F.cosine_similarity(identities[0], identities[1], dim=-1)
+            cosine_matrix = F.cosine_similarity(identities.unsqueeze(0), identities.unsqueeze(1), dim=-1)
+            labels_matirx = torch.eq(labels.unsqueeze(0), labels.unsqueeze(1))
+            labels_matirx = torch.where(labels_matirx, torch.tensor(1, dtype=torch.float), torch.tensor(-1, dtype=torch.float))
+            loss_veri = self.criterion_veri(cosine_matrix, labels_matirx)
+            loss_veri.backward()
+            loss = loss_iden + loss_veri
             self.optimizer.step()
             self.scheduler.step()
             all_loss.append(loss)
@@ -228,21 +235,24 @@ class voiceprint_recognition:
                 identities = self.model.backbone(features)
                 outputs = self.model.softmax(identities)
                 acc.append(accuracy(outputs, labels))
-                if labels.shape[0] % 2 == 1:
-                    labels = labels[0:-1]
-                    identities = identities[0:-1]
-                identities = torch.chunk(identities, 2, dim=0)
-                labels = list(torch.chunk(labels, 2, dim=0))
-                score = F.cosine_similarity(identities[0], identities[1], dim=1)
+                score_matrix = F.cosine_similarity(identities.unsqueeze(0), identities.unsqueeze(1), dim=-1)
+                labels_matrix = torch.eq(labels.unsqueeze(0), labels.unsqueeze(1))
+                all_score = score_matrix.view(-1)
+                all_labels = labels_matrix.view(-1)
+                # if labels.shape[0] % 2 == 1:
+                #     labels = labels[0:-1]
+                #     identities = identities[0:-1]
+                # identities = torch.chunk(identities, 2, dim=0)
+                # labels = list(torch.chunk(labels, 2, dim=0))
+                # score = F.cosine_similarity(identities[0], identities[1], dim=1)
                 if all_score is None:
-                    all_score = score
+                    all_score = score_matrix.view(-1)
                 else:
-                    all_score = torch.cat([all_score, score], dim=0)
+                    all_score = torch.cat([all_score, score_matrix.view(-1)], dim=0)
                 if all_labels is None:
-                    all_labels = labels
+                    all_labels = labels_matrix.view(-1)
                 else:
-                    all_labels[0] = torch.cat([all_labels[0], labels[0]], dim=0)
-                    all_labels[1] = torch.cat([all_labels[1], labels[1]], dim=0)
+                    all_labels = torch.cat([all_labels, labels_matrix.view(-1)], dim=0)
             print('验证集处理完毕')
             print('正在计算模型指标……')
             acc = sum(acc) / len(acc)

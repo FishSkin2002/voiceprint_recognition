@@ -12,10 +12,13 @@ def accuracy(outputs, labels):
 
 def fpr_fnr(all_score, all_label):
     with torch.no_grad():
-        same = torch.eq(all_label[0], all_label[1]).to(dtype=torch.int)
+        # same = torch.eq(all_label[0], all_label[1]).to(dtype=torch.int)
         all_score, sorted_indices = torch.sort(all_score)
-        same = same[sorted_indices]
-        diff = (same == 0).to(dtype=torch.int)
+        all_label = all_label[sorted_indices]
+        same = torch.where(all_label, 1, 0)
+        diff = torch.where(all_label, 0, 1)
+        # same = same[sorted_indices]
+        # diff = (same == 0).to(dtype=torch.int)
         if torch.sum(diff) == 0:
             fpr = torch.zeros_like(diff)
         else:

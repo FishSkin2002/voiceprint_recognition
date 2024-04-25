@@ -52,11 +52,12 @@ class feature_transform(nn.Module):
     def forward(self, x):
         with torch.no_grad():
             x = self.transform(x)
-            if self.use_mfcc_cms:
-                mfcc_mean = torch.mean(x, dim=-1, keepdim=True)
-                x = x - mfcc_mean
-            if self.use_specaugument:
-                x = self.__spec_augument(x)
+            if self.use_feature_extraction == 'MFCC':
+                if self.use_mfcc_cms:
+                    mfcc_mean = torch.mean(x, dim=-1, keepdim=True)
+                    x = x - mfcc_mean
+                if self.use_specaugument:
+                    x = self.__spec_augument(x)
         return x
 
     def __spec_augument(self,
