@@ -190,9 +190,10 @@ class voiceprint_recognition:
             # labels[labels == 0] = -1
             # cosine = F.cosine_similarity(identities[0], identities[1], dim=-1)
             cosine_matrix = F.cosine_similarity(identities.unsqueeze(0), identities.unsqueeze(1), dim=-1)
-            labels_matirx = torch.eq(labels.unsqueeze(0), labels.unsqueeze(1))
-            labels_matirx = torch.where(labels_matirx, torch.tensor(1, dtype=torch.float), torch.tensor(-1, dtype=torch.float))
-            loss_veri = self.criterion_veri(cosine_matrix, labels_matirx)
+            labels_matrix = torch.eq(labels.unsqueeze(0), labels.unsqueeze(1))
+            ignore_matrix = torch.min(cosine_matrix, torch.zeros_like(cosine_matrix) + 0.5)
+            labels_matrix = torch.where(labels_matrix, torch.ones_like(labels_matrix), ignore_matrix)
+            loss_veri = self.criterion_veri(cosine_matrix, labels_matrix)
             loss_veri.backward()
             loss = loss_iden + loss_veri
             self.optimizer.step()
