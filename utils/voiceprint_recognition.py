@@ -178,7 +178,7 @@ class voiceprint_recognition:
             # identities = self.model.backbone(features)
             # outputs = self.model.softmax(identities)
             outputs = self.model(features)
-            loss = self.criterion(outputs, labels)
+            loss = self.criterion(torch.log(outputs), labels)
             # if labels.shape[0] % 2 == 1:
             #     identities = identities[0:-1]
             #     labels = labels[0:-1]
