@@ -19,19 +19,22 @@ from utils.models.VGG_M import VGG_M
 class voiceprint_recognition:
     def __init__(self,
                  use_gpu=True,
-                 use_model='ECAPA_TDNN',
                  use_feature_extraction='MFCC',
+                 use_model='ECAPA_TDNN',
                  use_veri_loss='MSELoss',
                  use_iden_loss='NLLLoss',
                  veri_iden_loss_weight=(1, 1),
                  use_optimizer='Adam',
                  use_lr_scheduler='CyclicLR',
                  data_path='./dataset/VoxCeleb1',
-                 batch_size=128,
-                 sample_rate=16000,
+                 target_sample_rate=16000,
                  train_epoch=60,
-                 log_dir='./logs',
-                 save_model_path='./trained_models'):
+                 logdir='./logs',
+                 save_model_path='./trained_models',
+                 dataset_cfg=None,
+                 dataloader_cfg=None,
+                 transform_cfg=None,
+                 scheduler_cfg=None):
         if use_gpu:
             if torch.cuda.is_available():
                 self.device = torch.device('cuda')
@@ -40,17 +43,18 @@ class voiceprint_recognition:
         else:
             self.device = torch.device('cpu')
         print(f'当前使用设备：{self.device}')
-        self.writer = SummaryWriter(os.path.join(log_dir, use_model))
-        self.use_model = use_model
         self.use_feature_extraction = use_feature_extraction
+        self.use_model = use_model
         self.use_veri_loss = use_veri_loss
         self.use_iden_loss = use_iden_loss
         self.veri_iden_loss_weight = veri_iden_loss_weight
         self.use_optimizer = use_optimizer
         self.use_lr_scheduler = use_lr_scheduler
         self.data_path = data_path
-        self.batch_size = batch_size
-        self.sample_rate = sample_rate
+        self.target_sample_rate = target_sample_rate
+        self.train_epoch = train_epoch
+        self.save_model_path = save_model_path
+        self.writer = SummaryWriter(os.path.join(logdir, use_model))
         self.train_set = None
         self.dev_set = None
         self.test_set = None
@@ -58,16 +62,77 @@ class voiceprint_recognition:
         self.train_loader = None
         self.dev_loader = None
         self.test_loader = None
-        self.feature_extractor = None
+        self.transform = None
         self.model = None
         self.criterion_veri = None
         self.criterion_iden = None
         self.optimizer = None
         self.scheduler = None
-        self.train_epoch = train_epoch
         self.total_train_step = 0
         self.total_dev_step = 0
-        self.save_model_path = save_model_path
+        self.dataset_cfg = dataset_cfg
+        self.dataloader_cfg = dataloader_cfg
+        self.transform_cfg = transform_cfg
+        self.scheduler_cfg = scheduler_cfg
+        self.dataset_cfg = {
+            'data_path': './dataset/VoxCeleb1',
+            'max_duration': 2,
+
+            'use_mono': True,
+            'audio_augument_cfg': {
+                'use_speed_perturbation': True,
+                'speed_perturbation_sequence': (0.9, 1, 1.1),
+                'add_noise': True,
+                'snr_range': (40, 60)
+            }
+        }
+
+        self.dataloader_cfg = {
+            'batch_size': 128,
+            'shuffle': True,
+            'num_workers': 16,
+            'pin_memory': True
+        }
+
+        self.transform_cfg = {
+            'feature_extraction_cfg': {
+                'Spectrogram': {
+                    'n_fft': 512 * 2,
+                    'win_length': self.target_sample_rate // 1000 * 25,
+                    'hop_length': self.target_sample_rate // 1000 * 10,
+                    'window_fn': torch.hamming_window,
+                    'normalized': True
+                },
+                'MFCC': {
+                    'n_mfcc': 80,
+                    'log_mels': True,
+                    'melkwargs': {
+                        'n_fft': self.target_sample_rate // 1000 * 25,
+                        'hop_length': self.target_sample_rate // 1000 * 10,
+                        'n_mels': 80
+                    }
+                }
+            },
+            'spec_augument_cfg': {
+                'use_mfcc_cms': True,
+                'time_masking': {
+                    'time_mask_param': 5,
+                    'iid_masks': True
+                },
+                'freq_masking': {
+                    'freq_mask_param': 10,
+                    'iid_masks': True
+                },
+            }
+        }
+
+        self.scheduler_cfg = {
+            'base_lr': 1e-8,
+            'max_lr': 1e-3,
+            'step_size_up': 4000,
+            'mode': 'triangular2',
+            'cycle_momentum': False
+        }
 
     def train(self):
         self.__set_data()
@@ -79,41 +144,24 @@ class voiceprint_recognition:
             self.model.train()
             self.__epoch(i + 1)
             acc, eer, threshold = self.evaluate()
-            self.__save_model(i + 1)
+            self.__save_model(i + 1, acc, eer, threshold)
         self.writer.close()
 
     def __set_data(self):
         print('正在加载数据……')
-        self.train_set = VoxCeleb1_set(self.data_path, 'train')
-        self.dev_set = VoxCeleb1_set(self.data_path, 'dev')
-        self.test_set = VoxCeleb1_set(self.data_path, 'test')
+        self.train_set = VoxCeleb1_set('train', **self.dataset_cfg)
+        self.dev_set = VoxCeleb1_set('dev', **self.dataset_cfg)
+        self.test_set = VoxCeleb1_set('test', **self.dataset_cfg)
         self.num_speaker = self.train_set.get_num_speaker()
-        self.train_loader = DataLoader(self.train_set,
-                                       self.batch_size,
-                                       shuffle=True,
-                                       num_workers=16,
-                                       pin_memory=True)
-        self.dev_loader = DataLoader(self.dev_set,
-                                     self.batch_size,
-                                     shuffle=True,
-                                     num_workers=16,
-                                     pin_memory=True)
-        self.test_loader = DataLoader(self.test_set,
-                                      batch_size=self.batch_size,
-                                      shuffle=True,
-                                      num_workers=16,
-                                      pin_memory=True)
+        self.train_loader = DataLoader(self.train_set, **self.dataloader_cfg)
+        self.dev_loader = DataLoader(self.dev_set, **self.dataloader_cfg)
+        self.test_loader = DataLoader(self.test_set, **self.dataloader_cfg)
         print('数据加载完成')
 
     def __set_feature_extractor(self):
         print('正在加载特征提取……')
-        self.feature_extractor = feature_transform(use_feature_extraction=self.use_feature_extraction,
-                                                   device=self.device,
-                                                   use_mfcc_cms=True,
-                                                   log_mel=True,
-                                                   use_specaugument=True,
-                                                   sakwargs={'time_masking': 5,
-                                                             'frequency_masking': 10})
+        self.transform = feature_transform(**self.transform_cfg)
+        self.transform = self.transform.to(device=self.device)
         print(f'特征提取加载完成')
 
     def __set_model(self):
@@ -138,7 +186,7 @@ class voiceprint_recognition:
         if self.use_veri_loss == 'MSELoss':
             self.criterion_veri = nn.MSELoss()
         elif self.use_veri_loss == 'CosineEmbeddingLoss':
-            self.criterion_veri = nn.CosineEmbeddingLoss(margin=0.5)
+            self.criterion_veri = nn.CosineEmbeddingLoss()
         else:
             raise ValueError(f'不支持{self.use_veri_loss}损失函数')
 
@@ -146,10 +194,6 @@ class voiceprint_recognition:
             self.criterion_iden = nn.NLLLoss()
         elif self.use_iden_loss == 'CrossEntropyLoss':
             self.criterion_iden = nn.CrossEntropyLoss()
-        elif self.use_iden_loss == 'MSELoss':
-            self.criterion_iden = nn.MSELoss()
-        elif self.use_iden_loss == 'CosineEmbeddingLoss':
-            self.criterion_iden = nn.CosineEmbeddingLoss(margin=0.5)
         else:
             raise ValueError(f'不支持{self.use_iden_loss}损失函数')
 
@@ -163,20 +207,15 @@ class voiceprint_recognition:
         if self.use_optimizer == 'Adam':
             self.optimizer = optim.Adam(
                 [{'params': self.model.backbone.parameters(), 'weight_decay': 2e-5},
-                 {'params': self.model.softmax.parameters(), 'weight_decay': 2e-4}
-                 ])
+                 {'params': self.model.softmax.parameters(), 'weight_decay': 2e-4}]
+            )
         else:
             raise ValueError(f'不支持{self.use_optimizer}优化器')
         print(f'优化器{self.use_optimizer}加载完成')
 
         print('正在加载学习率衰减方法……')
         if self.use_lr_scheduler == 'CyclicLR':
-            self.scheduler = optim.lr_scheduler.CyclicLR(self.optimizer,
-                                                         base_lr=1e-8,
-                                                         max_lr=1e-3,
-                                                         step_size_up=4000,
-                                                         mode='triangular2',
-                                                         cycle_momentum=False)
+            self.scheduler = optim.lr_scheduler.CyclicLR(self.optimizer, **self.scheduler_cfg)
         else:
             raise ValueError(f'不支持{self.use_lr_scheduler}学习率衰减方法')
         print(f'学习率衰减方法{self.use_lr_scheduler}加载完成')
@@ -189,7 +228,7 @@ class voiceprint_recognition:
             self.optimizer.zero_grad()
             waveforms = waveforms.to(device=self.device)
             labels = labels.to(device=self.device)
-            features = self.feature_extractor(waveforms)
+            features = self.transform(waveforms)
             identities = self.model.backbone(features)
             outputs = self.model.softmax(identities)
             loss_iden = self.criterion_iden(torch.log(outputs), labels) * torch.tensor(self.veri_iden_loss_weight[1])
@@ -223,8 +262,11 @@ class voiceprint_recognition:
         os.makedirs(model_path, exist_ok=True)
         torch.save(self.model.state_dict(), os.path.join(model_path, f'{self.use_model}.pth'))
         torch.save(self.optimizer.state_dict(), os.path.join(model_path, 'optimizer.pth'))
-        with open(os.path.join(self.save_model_path, f'{self.use_model}/metrix.txt'), 'a') as file:
-            file.write(f'Epoch: {now_epoch}, ACC: {acc}, EER: {eer}, threshold: {threshold}\n')
+        with open(os.path.join(self.save_model_path, f'{self.use_model}/metrics.txt'), 'a') as file:
+            file.write(f'Epoch: {now_epoch},    '
+                       f'ACC: {acc:.10f},    '
+                       f'EER: {eer:.10f},    '
+                       f'threshold: {threshold:.10f}\n')
         print('模型成功保存')
 
     def evaluate(self):
@@ -238,7 +280,7 @@ class voiceprint_recognition:
             for waveforms, labels in self.dev_loader:
                 waveforms = waveforms.to(device=self.device)
                 labels = labels.to(device=self.device)
-                features = self.feature_extractor(waveforms)
+                features = self.transform(waveforms)
                 identities = self.model.backbone(features)
                 outputs = self.model.softmax(identities)
                 acc.append(accuracy(outputs, labels))
