@@ -36,13 +36,10 @@ class voiceprint_recognition:
                  transform_cfg=None,
                  scheduler_cfg=None):
         if use_gpu:
-            if torch.cuda.is_available():
-                self.device = torch.device('cuda')
-            else:
-                raise ValueError('GPU不可用')
+            assert torch.cuda.is_available(), 'CUDA不可用'
+            self.device = torch.device('cuda')
         else:
             self.device = torch.device('cpu')
-        print(f'当前使用设备：{self.device}')
         self.use_feature_extraction = use_feature_extraction
         self.use_model = use_model
         self.use_veri_loss = use_veri_loss
@@ -148,7 +145,6 @@ class voiceprint_recognition:
         self.writer.close()
 
     def __set_data(self):
-        print('正在加载数据……')
         self.train_set = VoxCeleb1_set('train', **self.dataset_cfg)
         self.dev_set = VoxCeleb1_set('dev', **self.dataset_cfg)
         self.test_set = VoxCeleb1_set('test', **self.dataset_cfg)
@@ -156,16 +152,12 @@ class voiceprint_recognition:
         self.train_loader = DataLoader(self.train_set, **self.dataloader_cfg)
         self.dev_loader = DataLoader(self.dev_set, **self.dataloader_cfg)
         self.test_loader = DataLoader(self.test_set, **self.dataloader_cfg)
-        print('数据加载完成')
 
     def __set_feature_extractor(self):
-        print('正在加载特征提取……')
         self.transform = feature_transform(**self.transform_cfg)
         self.transform = self.transform.to(device=self.device)
-        print(f'特征提取加载完成')
 
     def __set_model(self):
-        print('正在加载模型……')
         if self.use_model == 'ECAPA_TDNN':
             backbone = ECAPA_TDNN()
             softmax = AAM_Softmax(self.num_speaker, device=self.device)
@@ -179,10 +171,8 @@ class voiceprint_recognition:
         else:
             raise ValueError(f'不支持{self.use_model}模型')
         self.model = self.model.to(device=self.device)
-        print(f'模型{self.use_model}加载完成')
 
     def __set_criterion(self):
-        print('正在加载损失函数……')
         if self.use_veri_loss == 'MSELoss':
             self.criterion_veri = nn.MSELoss()
         elif self.use_veri_loss == 'CosineEmbeddingLoss':
@@ -199,11 +189,8 @@ class voiceprint_recognition:
 
         self.criterion_veri = self.criterion_veri.to(device=self.device)
         self.criterion_iden = self.criterion_iden.to(device=self.device)
-        print(f'Speaker Verification损失函数{self.use_veri_loss}和'
-              f'Speaker Identification损失函数{self.use_iden_loss}加载完成')
 
     def __set_optimizer(self):
-        print('正在加载优化器……')
         if self.use_optimizer == 'Adam':
             self.optimizer = optim.Adam(
                 [{'params': self.model.backbone.parameters(), 'weight_decay': 2e-5},
@@ -211,14 +198,11 @@ class voiceprint_recognition:
             )
         else:
             raise ValueError(f'不支持{self.use_optimizer}优化器')
-        print(f'优化器{self.use_optimizer}加载完成')
 
-        print('正在加载学习率衰减方法……')
         if self.use_lr_scheduler == 'CyclicLR':
             self.scheduler = optim.lr_scheduler.CyclicLR(self.optimizer, **self.scheduler_cfg)
         else:
             raise ValueError(f'不支持{self.use_lr_scheduler}学习率衰减方法')
-        print(f'学习率衰减方法{self.use_lr_scheduler}加载完成')
 
     def __epoch(self, now_epoch):
         print(f'开始Epoch[{now_epoch}/{self.train_epoch}]的训练……')
@@ -267,7 +251,7 @@ class voiceprint_recognition:
                        f'ACC: {acc:.10f},    '
                        f'EER: {eer:.10f},    '
                        f'threshold: {threshold:.10f}\n')
-        print('模型成功保存')
+        print(f'模型成功保存到{model_path}')
 
     def evaluate(self):
         print('验证阶段开始')

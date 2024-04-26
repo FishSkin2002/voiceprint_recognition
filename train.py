@@ -1,3 +1,4 @@
+import json
 import os
 from datetime import datetime
 
@@ -82,4 +83,9 @@ if __name__ == "__main__":
                                                     dataloader_cfg=dataloader_cfg,
                                                     transform_cfg=transform_cfg,
                                                     scheduler_cfg=scheduler_cfg)
+    train_cfg = json.dumps(train_cfg, indent=4)
+    dataset_cfg = json.dumps(dataset_cfg, indent=4)
+    dataloader_cfg = json.dumps(dataloader_cfg, indent=4)
+    transform_cfg = json.dumps(transform_cfg, indent=4)
+    scheduler_cfg = json.dumps(scheduler_cfg, indent=4)
     voiceprint_recognition.train()
