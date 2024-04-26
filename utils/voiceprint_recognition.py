@@ -31,7 +31,7 @@ class voiceprint_recognition:
                  sample_rate=16000,
                  train_epoch=60,
                  log_dir='./logs',
-                 save_model_path='./models'):
+                 save_model_path='./trained_models'):
         if use_gpu:
             if torch.cuda.is_available():
                 self.device = torch.device('cuda')
@@ -78,7 +78,7 @@ class voiceprint_recognition:
         for i in range(self.train_epoch):
             self.model.train()
             self.__epoch(i + 1)
-            self.evaluate()
+            acc, eer, threshold = self.evaluate()
             self.__save_model(i + 1)
         self.writer.close()
 
@@ -107,8 +107,8 @@ class voiceprint_recognition:
 
     def __set_feature_extractor(self):
         print('正在加载特征提取……')
-        self.feature_extractor = feature_transform(self.use_feature_extraction,
-                                                   self.device,
+        self.feature_extractor = feature_transform(use_feature_extraction=self.use_feature_extraction,
+                                                   device=self.device,
                                                    use_mfcc_cms=True,
                                                    log_mel=True,
                                                    use_specaugument=True,
@@ -208,7 +208,7 @@ class voiceprint_recognition:
                     f'Epoch:[{now_epoch}/{self.train_epoch}], '
                     f'Batch:[{batch_id + 1}/{len(self.train_loader)}], '
                     f'Loss:{sum(all_loss) / len(all_loss):.4f}, '
-                    f'Learning Rate: {self.scheduler.get_last_lr()[0]:.8f}'
+                    f'Learning Rate: {self.scheduler.get_last_lr()[0]:.10f}'
                 )
                 all_loss = []
             self.writer.add_scalar(tag='train/loss',
@@ -218,11 +218,13 @@ class voiceprint_recognition:
                                    scalar_value=self.scheduler.get_last_lr()[0],
                                    global_step=self.total_train_step)
 
-    def __save_model(self, now_epoch):
+    def __save_model(self, now_epoch, acc, eer, threshold):
         model_path = os.path.join(self.save_model_path, f'{self.use_model}/epoch_{now_epoch}')
         os.makedirs(model_path, exist_ok=True)
         torch.save(self.model.state_dict(), os.path.join(model_path, f'{self.use_model}.pth'))
         torch.save(self.optimizer.state_dict(), os.path.join(model_path, 'optimizer.pth'))
+        with open(os.path.join(self.save_model_path, f'{self.use_model}/metrix.txt'), 'a') as file:
+            file.write(f'Epoch: {now_epoch}, ACC: {acc}, EER: {eer}, threshold: {threshold}\n')
         print('模型成功保存')
 
     def evaluate(self):
@@ -257,9 +259,9 @@ class voiceprint_recognition:
             acc = sum(acc) / len(acc)
             fpr, fnr, all_score = fpr_fnr(all_score, all_labels)
             eer, threshold = eer_threshold(fpr, fnr, all_score)
-            print(f'Speaker Identification ACC: {acc:.2%}\n'
-                  f'Speaker Verification EER: {eer:.2%}, '
-                  f'threshold: {threshold:.4f}')
+            print(f'Speaker Identification ACC: {acc:.4%}\n'
+                  f'Speaker Verification EER: {eer:.4%}, '
+                  f'threshold: {threshold:.8f}')
             self.total_dev_step += 1
             self.writer.add_scalar(tag='dev/identification/ACC',
                                    scalar_value=acc,
@@ -270,3 +272,4 @@ class voiceprint_recognition:
             self.writer.add_scalar(tag='dev/verification/threshold',
                                    scalar_value=threshold,
                                    global_step=self.total_dev_step)
+            return acc, eer, threshold

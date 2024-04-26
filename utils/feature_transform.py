@@ -9,7 +9,7 @@ import torchaudio.functional as F
 class feature_transform(nn.Module):
     def __init__(self,
                  add_noise=True,
-                 snr=10,
+                 snr_range=(40, 60),
                  use_feature_extraction='MFCC',
                  device=torch.device('cuda'),
                  sample_rate=16000,
@@ -18,10 +18,10 @@ class feature_transform(nn.Module):
                  use_specaugument=False,
                  sakwargs: Optional[dict] = None):
         super().__init__()
-        self.add_noise = add_noise
-        self.snr = snr
-        self.use_feature_extraction = use_feature_extraction
         self.device = device
+        self.add_noise = add_noise
+        self.snr_range = snr_range
+        self.use_feature_extraction = use_feature_extraction
         self.sample_rate = sample_rate
         self.log_mel = log_mel
         self.use_mfcc_cms = use_mfcc_cms
@@ -57,7 +57,9 @@ class feature_transform(nn.Module):
     def forward(self, x):
         with torch.no_grad():
             if self.add_noise:
-                x = F.add_noise(x, torch.randn_like(x), torch.tensor([self.snr]))
+                noise = torch.randn_like(x, device=self.device)
+                snr = torch.randint(low=self.snr_range[0], high=self.snr_range[1], size=[1], device=self.device)
+                x = F.add_noise(x, noise, snr)
             x = self.transform(x)
             if self.use_feature_extraction == 'MFCC':
                 if self.use_mfcc_cms:

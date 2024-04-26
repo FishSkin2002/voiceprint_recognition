@@ -44,7 +44,7 @@ def eer_threshold(fpr, fnr, all_score):
             if x1.numel() > 0 and x2.numel() > 0:
                 x1 = x1.max()
                 x2 = x2.min()
-                threshold = (all_score[x2] - all_score[x1]).item() / 2
+                threshold = (all_score[x1] + all_score[x2]).item() / 2
                 eer = (fpr[x1] + fnr[x1] + fpr[x2] + fnr[x2]).item() / 4
             elif x1.numel() == 0:
                 threshold = all_score[0].item()
