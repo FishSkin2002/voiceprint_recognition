@@ -4,10 +4,11 @@ import torch.nn.functional as F
 
 
 class AAMLoss(nn.Module):
-    def __init__(self, scale=30, margin=0.2):
+    def __init__(self, num_speaker, scale=30, margin=0.2):
         super().__init__()
         self.scale = scale
         self.margin = margin
+        self.num_speaker = num_speaker
 
     def forward(self, cos_theta, label):
         theta = torch.acos(cos_theta)

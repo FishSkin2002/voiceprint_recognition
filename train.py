@@ -19,8 +19,8 @@ if __name__ == "__main__":
         'use_lr_scheduler': 'CyclicLR',
         'target_sample_rate': 16000,
         'train_epoch': 60,
-        'logdir': os.path.join('./logs/' + timestr),
-        'save_model_path': os.path.join('./trained_models/' + timestr)
+        'logdir': os.path.join('./logs', timestr),
+        'save_model_path': os.path.join('./trained_models', timestr)
     }
     dataset_cfg = {
         'data_path': './dataset/VoxCeleb1',
