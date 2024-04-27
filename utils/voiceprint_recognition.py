@@ -164,7 +164,7 @@ class voiceprint_recognition:
             labels = labels.to(device=self.device)
             features = self.transform(waveforms)
             outputs = self.model(features)
-            loss = self.criterion(outputs, labels)
+            loss = self.criterion(torch.log(outputs), labels)
             # identities = self.model.backbone(features)
             # outputs = self.model.softmax(identities)
             # loss_iden = self.criterion_iden(torch.log(outputs), labels) * torch.tensor(self.veri_iden_loss_weight[1])
