@@ -35,7 +35,7 @@ class VoxCeleb1_set(Dataset):
             self.subsetIndex = '3'
         else:
             raise ValueError("子集仅能选择train、dev和test！")
-        print(f'正在加载{self.subset}集')
+
         with open(self.metadata, 'r') as files:
             for file in files:
                 subset, path = file.split()
@@ -45,7 +45,6 @@ class VoxCeleb1_set(Dataset):
                     self.waveforms_list.append((idx, path))
                     if idx not in self.idx_dict:
                         self.idx_dict[idx] = len(self.idx_dict)
-        print(f'{self.subset}集加载完毕')
 
         if self.audio_augument_cfg.get('use_speed_perturbation'):
             speed_perturbation_sequence = list(self.audio_augument_cfg['speed_perturbation_sequence'])

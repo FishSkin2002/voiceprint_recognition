@@ -1,4 +1,3 @@
-import json
 import os
 from datetime import datetime
 
@@ -12,12 +11,12 @@ if __name__ == "__main__":
         'use_gpu': True,
         'use_feature_extraction': 'MFCC',
         'use_model': 'ECAPA_TDNN',
-        'use_veri_loss': 'MSELoss',
-        'use_iden_loss': 'NLLLoss',
-        'veri_iden_loss_weight': (1, 1),
+        'use_loss': 'AAMLoss',
+        # 'use_veri_loss': 'MSELoss',
+        # 'use_iden_loss': 'NLLLoss',
+        # 'veri_iden_loss_weight': (1, 1),
         'use_optimizer': 'Adam',
         'use_lr_scheduler': 'CyclicLR',
-        'data_path': './dataset/VoxCeleb1',
         'target_sample_rate': 16000,
         'train_epoch': 60,
         'logdir': os.path.join('./logs/' + timestr),
@@ -43,7 +42,7 @@ if __name__ == "__main__":
     transform_cfg = {
         'feature_extraction_cfg': {
             'Spectrogram': {
-                'n_fft': 512 * 2,
+                'n_fft': 1024,
                 'win_length': 400,
                 'hop_length': 160,
                 'window_fn': torch.hamming_window,
@@ -83,9 +82,4 @@ if __name__ == "__main__":
                                                     dataloader_cfg=dataloader_cfg,
                                                     transform_cfg=transform_cfg,
                                                     scheduler_cfg=scheduler_cfg)
-    train_cfg = json.dumps(train_cfg, indent=4)
-    dataset_cfg = json.dumps(dataset_cfg, indent=4)
-    dataloader_cfg = json.dumps(dataloader_cfg, indent=4)
-    transform_cfg = json.dumps(transform_cfg, indent=4)
-    scheduler_cfg = json.dumps(scheduler_cfg, indent=4)
     voiceprint_recognition.train()
