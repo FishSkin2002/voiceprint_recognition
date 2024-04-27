@@ -11,7 +11,7 @@ import torch.nn.functional as F
 from utils.feature_transform import feature_transform
 from utils.nn.Non_linear_Activations import AAM_Softmax
 from utils.data.VoxCeleb1_set import VoxCeleb1_set
-from utils.metrics import accuracy, fpr_fnr, eer_threshold
+from utils.metrics import accuracy, cal_fpr_fnr, cal_eer_threshold, cal_min_dcf_threshold
 from utils.models.ECAPA_TDNN import ECAPA_TDNN
 from utils.models.VGG_M import VGG_M
 
@@ -21,7 +21,7 @@ class voiceprint_recognition:
                  use_gpu=True,
                  use_feature_extraction='MFCC',
                  use_model='ECAPA_TDNN',
-                 use_loss='AAMLoss',
+                 use_loss='NLLoss',
                  # use_veri_loss='MSELoss',
                  # use_iden_loss='NLLLoss',
                  # veri_iden_loss_weight=(1, 1),
@@ -59,6 +59,7 @@ class voiceprint_recognition:
         self.train_loader = None
         self.dev_loader = None
         self.test_loader = None
+        self.len_trainloader = None
         self.transform = None
         self.model = None
         self.criterion_veri = None
@@ -95,6 +96,7 @@ class voiceprint_recognition:
         self.train_loader = DataLoader(self.train_set, **self.dataloader_cfg)
         self.dev_loader = DataLoader(self.dev_set, **self.dataloader_cfg)
         self.test_loader = DataLoader(self.test_set, **self.dataloader_cfg)
+        self.len_trainloader = len(self.train_loader)
 
     def __set_feature_extractor(self):
         self.transform = feature_transform(**self.transform_cfg)
@@ -103,17 +105,18 @@ class voiceprint_recognition:
     def __set_model(self):
         if self.use_model == 'ECAPA_TDNN':
             backbone = ECAPA_TDNN()
-            softmax = AAM_Softmax(self.num_speaker)
+            softmax = AAM_Softmax(self.num_speaker, self.len_trainloader, self.device)
             self.model = nn.Sequential(OrderedDict([
                 ('backbone', backbone),
                 ('softmax', softmax)
             ]))
-            summary(self.model, input_size=[1, 80, 201])
         elif self.use_model == 'VGG_M':
             self.model = VGG_M()
+            self.model = self.model.to(device=self.device)
         else:
             raise ValueError(f'不支持{self.use_model}模型')
         self.model = self.model.to(device=self.device)
+        summary(self.model, input_size=[1, 80, 201])
 
     def __set_criterion(self):
         if self.use_loss == 'CrossEntropyLoss':
@@ -142,10 +145,10 @@ class voiceprint_recognition:
 
     def __set_optimizer(self):
         if self.use_optimizer == 'Adam':
-            self.optimizer = optim.Adam(
-                [{'params': self.model.backbone.parameters(), 'weight_decay': 2e-5},
-                 {'params': self.model.softmax.parameters(), 'weight_decay': 2e-4}]
-            )
+            self.optimizer = optim.Adam([
+                {'params': self.model.backbone.parameters(), 'weight_decay': 2e-5},
+                {'params': self.model.softmax.parameters(), 'weight_decay': 2e-4}
+            ])
         else:
             raise ValueError(f'不支持{self.use_optimizer}优化器')
 
@@ -234,19 +237,31 @@ class voiceprint_recognition:
             print('验证集处理完毕')
             print('正在计算模型指标……')
             acc = sum(acc) / len(acc)
-            fpr, fnr, all_score = fpr_fnr(all_score, all_labels)
-            eer, threshold = eer_threshold(fpr, fnr, all_score)
-            print(f'Speaker Identification ACC: {acc:.4%}\n'
-                  f'Speaker Verification EER: {eer:.4%}, '
-                  f'threshold: {threshold:.8f}')
+            fpr, fnr, all_score = cal_fpr_fnr(all_score, all_labels)
+            eer, eer_threshold = cal_eer_threshold(fpr, fnr, all_score)
+            min_dcf, min_dcf_threshold = cal_min_dcf_threshold(fpr, fnr, all_score)
+            print(f'Speaker Identification task\n'
+                  f'ACC: {acc:.4%}\n'
+                  f'Speaker Verification task\n'
+                  f'EER: {eer:.4%}, '
+                  f'EER threshold: {eer_threshold:.8f}\n'
+                  f'minDCF: {min_dcf:.4f}, '
+                  f'DCF threshold: {min_dcf_threshold:.4f}')
             self.total_dev_step += 1
-            self.writer.add_scalar(tag='dev/identification/ACC',
+            self.writer.add_scalar(tag='dev/ACC',
                                    scalar_value=acc,
                                    global_step=self.total_dev_step)
-            self.writer.add_scalar(tag='dev/verification/EER',
+            self.writer.add_scalar(tag='dev/EER',
                                    scalar_value=eer,
                                    global_step=self.total_dev_step)
-            self.writer.add_scalar(tag='dev/verification/threshold',
-                                   scalar_value=threshold,
+            self.writer.add_scalar(tag='dev/EER_threshold',
+                                   scalar_value=eer_threshold,
                                    global_step=self.total_dev_step)
-            return acc, eer, threshold
+            self.writer.add_scalar(tag='dev/minDCF',
+                                   scalar_value=min_dcf,
+                                   global_step=self.total_dev_step)
+            self.writer.add_scalar(tag='dev/minDCF_threshold',
+                                   scalar_value=min_dcf_threshold,
+                                   global_step=self.total_dev_step)
+
+            return acc, eer, eer_threshold

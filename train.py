@@ -11,7 +11,7 @@ if __name__ == "__main__":
         'use_gpu': True,
         'use_feature_extraction': 'MFCC',
         'use_model': 'ECAPA_TDNN',
-        'use_loss': 'AAMLoss',
+        'use_loss': 'NLLoss',
         # 'use_veri_loss': 'MSELoss',
         # 'use_iden_loss': 'NLLLoss',
         # 'veri_iden_loss_weight': (1, 1),
