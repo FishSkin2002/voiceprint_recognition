@@ -59,7 +59,6 @@ class voiceprint_recognition:
         self.train_loader = None
         self.dev_loader = None
         self.test_loader = None
-        self.len_trainloader = None
         self.transform = None
         self.model = None
         self.criterion_veri = None
@@ -82,8 +81,8 @@ class voiceprint_recognition:
         for i in range(self.train_epoch):
             self.model.train()
             self.__epoch(i + 1)
-            acc, eer, threshold = self.evaluate()
-            self.__save_model(i + 1, acc, eer, threshold)
+            acc, eer, threshold, min_dcf, min_dcf_threshold = self.evaluate()
+            self.__save_model(i + 1, acc, eer, threshold, min_dcf, min_dcf_threshold)
         self.writer.close()
 
     def __set_data(self):
@@ -96,7 +95,6 @@ class voiceprint_recognition:
         self.train_loader = DataLoader(self.train_set, **self.dataloader_cfg)
         self.dev_loader = DataLoader(self.dev_set, **self.dataloader_cfg)
         self.test_loader = DataLoader(self.test_set, **self.dataloader_cfg)
-        self.len_trainloader = len(self.train_loader)
 
     def __set_feature_extractor(self):
         self.transform = feature_transform(**self.transform_cfg)
@@ -105,7 +103,7 @@ class voiceprint_recognition:
     def __set_model(self):
         if self.use_model == 'ECAPA_TDNN':
             backbone = ECAPA_TDNN()
-            softmax = AAM_Softmax(self.num_speaker, self.len_trainloader, self.device)
+            softmax = AAM_Softmax(self.num_speaker, self.device)
             self.model = nn.Sequential(OrderedDict([
                 ('backbone', backbone),
                 ('softmax', softmax)
@@ -160,6 +158,9 @@ class voiceprint_recognition:
     def __epoch(self, now_epoch):
         print(f'开始Epoch[{now_epoch}/{self.train_epoch}]的训练……')
         all_loss = []
+        if now_epoch == 5:
+            self.model.softmax.scale = nn.Parameter(torch.tensor(self.model.softmax.scale, dtype=torch.float))
+            self.optimizer.add_param_group({'params': self.model.softmax.scale, 'weight_decay': 2e-4})
         for batch_id, (waveforms, labels) in enumerate(self.train_loader):
             self.total_train_step += 1
             self.optimizer.zero_grad()
@@ -196,7 +197,7 @@ class voiceprint_recognition:
                                    scalar_value=self.scheduler.get_last_lr()[0],
                                    global_step=self.total_train_step)
 
-    def __save_model(self, now_epoch, acc, eer, threshold):
+    def __save_model(self, now_epoch, acc, eer, eer_threshold, min_dcf, min_dcf_threshold):
         model_path = os.path.join(self.save_model_path, f'{self.use_model}/epoch_{now_epoch}')
         os.makedirs(model_path, exist_ok=True)
         torch.save(self.model.state_dict(), os.path.join(model_path, f'{self.use_model}.pth'))
@@ -204,7 +205,9 @@ class voiceprint_recognition:
             file.write(f'Epoch: {now_epoch},    '
                        f'ACC: {acc:.10f},    '
                        f'EER: {eer:.10f},    '
-                       f'threshold: {threshold:.10f}\n')
+                       f'EER threshold: {eer_threshold:.10f}\n'
+                       f'minDCF: {min_dcf:.10f}, '
+                       f'minDCF threshold: {min_dcf_threshold:.10f}')
         print(f'模型成功保存到{model_path}')
 
     def evaluate(self):
@@ -263,5 +266,4 @@ class voiceprint_recognition:
             self.writer.add_scalar(tag='dev/minDCF_threshold',
                                    scalar_value=min_dcf_threshold,
                                    global_step=self.total_dev_step)
-
-            return acc, eer, eer_threshold
+            return acc, eer, eer_threshold, min_dcf, min_dcf_threshold

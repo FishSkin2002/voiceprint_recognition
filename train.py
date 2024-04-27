@@ -28,9 +28,9 @@ if __name__ == "__main__":
         'use_mono': True,
         'audio_augument_cfg': {
             'use_speed_perturbation': True,
-            'speed_perturbation_sequence': (0.9, 1, 1.1),
+            'speed_perturbation_sequence': (0.9, 0.95, 1, 1.05, 1.1),
             'add_noise': True,
-            'snr_range': (40, 60)
+            'snr_range': (10, 50)
         }
     }
     dataloader_cfg = {
@@ -73,7 +73,7 @@ if __name__ == "__main__":
     scheduler_cfg = {
         'base_lr': 1e-8,
         'max_lr': 1e-3,
-        'step_size_up': 4000,
+        'step_size_up': 10000,
         'mode': 'triangular2',
         'cycle_momentum': False
     }
