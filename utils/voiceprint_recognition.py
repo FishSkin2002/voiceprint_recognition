@@ -9,11 +9,10 @@ from torch.utils.data import DataLoader
 import torch.nn.functional as F
 
 from utils.feature_transform import feature_transform
-from utils.nn.Loss_Functions import AAMLoss
-# from utils.nn.Non_linear_Activations import AAM_Softmax
+from utils.nn.Non_linear_Activations import AAM_Softmax
 from utils.data.VoxCeleb1_set import VoxCeleb1_set
 from utils.metrics import accuracy, fpr_fnr, eer_threshold
-from utils.models.ECAPA_TDNN import ECAPA_TDNN, ECAPA_TDNN_classifier
+from utils.models.ECAPA_TDNN import ECAPA_TDNN
 from utils.models.VGG_M import VGG_M
 
 
@@ -104,10 +103,10 @@ class voiceprint_recognition:
     def __set_model(self):
         if self.use_model == 'ECAPA_TDNN':
             backbone = ECAPA_TDNN()
-            classifier = ECAPA_TDNN_classifier(self.num_speaker)
+            softmax = AAM_Softmax(self.num_speaker)
             self.model = nn.Sequential(OrderedDict([
                 ('backbone', backbone),
-                ('classifier', classifier)
+                ('softmax', softmax)
             ]))
             summary(self.model, input_size=[1, 80, 201])
         elif self.use_model == 'VGG_M':
@@ -119,8 +118,8 @@ class voiceprint_recognition:
     def __set_criterion(self):
         if self.use_loss == 'CrossEntropyLoss':
             self.criterion = nn.CrossEntropyLoss()
-        elif self.use_loss == 'AAMLoss':
-            self.criterion = AAMLoss(self.num_speaker)
+        elif self.use_loss == 'NLLoss':
+            self.criterion = nn.NLLLoss()
         else:
             raise ValueError(f'不支持{self.use_loss}损失函数')
         self.criterion = self.criterion.to(device=self.device)
@@ -145,7 +144,7 @@ class voiceprint_recognition:
         if self.use_optimizer == 'Adam':
             self.optimizer = optim.Adam(
                 [{'params': self.model.backbone.parameters(), 'weight_decay': 2e-5},
-                 {'params': self.model.classifier.parameters(), 'weight_decay': 2e-4}]
+                 {'params': self.model.softmax.parameters(), 'weight_decay': 2e-4}]
             )
         else:
             raise ValueError(f'不支持{self.use_optimizer}优化器')
@@ -218,8 +217,7 @@ class voiceprint_recognition:
                 labels = labels.to(device=self.device)
                 features = self.transform(waveforms)
                 identities = self.model.backbone(features)
-                outputs = self.model.classifier(identities)
-                outputs = F.softmax(outputs, dim=-1)
+                outputs = self.model.softmax(identities)
                 acc.append(accuracy(outputs, labels))
                 score_matrix = F.cosine_similarity(identities.unsqueeze(0), identities.unsqueeze(1), dim=-1)
                 labels_matrix = torch.eq(labels.unsqueeze(0), labels.unsqueeze(1))
