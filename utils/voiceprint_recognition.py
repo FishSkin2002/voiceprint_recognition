@@ -188,7 +188,7 @@ class voiceprint_recognition:
                            f'EER: {eer:.10f},    '
                            f'EER threshold: {eer_threshold:.10f}    '
                            f'minDCF: {min_dcf:.10f},    '
-                           f'minDCF threshold: {min_dcf_threshold:.10f}'
+                           f'minDCF threshold: {min_dcf_threshold:.10f}    '
                            f'best_model\n')
             else:
                 file.write(f'Epoch: {now_epoch},    '
