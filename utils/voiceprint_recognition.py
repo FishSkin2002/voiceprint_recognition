@@ -32,6 +32,7 @@ class voiceprint_recognition:
                  dataset_cfg=None,
                  dataloader_cfg=None,
                  transform_cfg=None,
+                 model_cfg=None,
                  scheduler_cfg=None):
         if use_gpu:
             assert torch.cuda.is_available(), 'CUDA不可用'
@@ -65,6 +66,7 @@ class voiceprint_recognition:
         self.dataset_cfg = dataset_cfg
         self.dataloader_cfg = dataloader_cfg
         self.transform_cfg = transform_cfg
+        self.model_cfg = model_cfg
         self.scheduler_cfg = scheduler_cfg
         self.best_eer = 1
 
@@ -99,14 +101,14 @@ class voiceprint_recognition:
     def __set_model(self):
         if self.use_model == 'ECAPA_TDNN':
             self.model = nn.Sequential(OrderedDict([
-                ('backbone', ECAPA_TDNN()),
+                ('backbone', ECAPA_TDNN(self.model_cfg.get('ECAPA_TDNN'))),
                 ('classifier', ECAPA_TDNN_classifier(self.num_speaker))
             ]))
             self.model = self.model.to(device=self.device)
             summary(self.model, input_size=[1, 80, 201])
         elif self.use_model == 'VGG_M':
             self.model = nn.Sequential(OrderedDict([
-                ('backbone', VGG_M()),
+                ('backbone', VGG_M(self.model_cfg.get('VGG_M'))),
                 ('classifier', nn.Linear(in_features=1024, out_features=self.num_speaker))
             ]))
             self.model = self.model.to(device=self.device)

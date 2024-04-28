@@ -66,6 +66,12 @@ if __name__ == "__main__":
             },
         }
     }
+    model_cfg = {
+        'ECAPA_TDNN': {
+            'channels': 512,
+            'bottleneck': 128
+        }
+    }
     scheduler_cfg = {
         'base_lr': 1e-8,
         'max_lr': 1e-3,
