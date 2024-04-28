@@ -6,25 +6,22 @@ import torch
 from utils.voiceprint_recognition import voiceprint_recognition
 
 if __name__ == "__main__":
-    timestr = datetime.now().strftime("%Y%m%d%H%M%S")
+    timestr = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
     train_cfg = {
         'use_gpu': True,
         'use_feature_extraction': 'MFCC',
         'use_model': 'ECAPA_TDNN',
-        'use_loss': 'NLLoss',
-        # 'use_veri_loss': 'MSELoss',
-        # 'use_iden_loss': 'NLLLoss',
-        # 'veri_iden_loss_weight': (1, 1),
+        'use_loss': 'AAMLoss',
         'use_optimizer': 'Adam',
         'use_lr_scheduler': 'CyclicLR',
         'target_sample_rate': 16000,
-        'train_epoch': 60,
+        'train_epoch': 100,
         'logdir': os.path.join('./logs', timestr),
         'save_model_path': os.path.join('./trained_models', timestr)
     }
     dataset_cfg = {
         'data_path': './dataset/VoxCeleb1',
-        'max_duration': 2,
+        'max_duration': 3,
         'use_mono': True,
         'audio_augument_cfg': {
             'use_speed_perturbation': True,

@@ -56,10 +56,10 @@ class VoxCeleb1_set(Dataset):
         with torch.no_grad():
             idx, path = self.waveforms_list[index]
             waveform, sample_rate = torchaudio.load(uri=path, backend='soundfile')
-            if sample_rate != self.target_sample_rate:
-                waveform = F.resample(waveform, sample_rate, self.target_sample_rate)
             if self.subset == 'train' and self.audio_augument_cfg:
                 waveform = self.__audio_augument(waveform)
+            if sample_rate != self.target_sample_rate:
+                waveform = F.resample(waveform, sample_rate, self.target_sample_rate)
             waveform = self.__audio_crop(waveform)
             label = self.idx_dict[idx]
         return waveform, label
@@ -78,7 +78,8 @@ class VoxCeleb1_set(Dataset):
                 waveform = waveform[:, random_number:random_number + waveform_length]
             elif waveform.shape[1] < waveform_length:
                 zeros_tensor = torch.zeros([waveform.shape[0], waveform_length])
-                waveform = zeros_tensor + waveform
+                zeros_tensor[0:waveform.shape[1]] = waveform
+                waveform = zeros_tensor
             if self.use_mono:
                 waveform = torch.mean(waveform, dim=0, keepdim=False)
         return waveform
@@ -88,7 +89,7 @@ class VoxCeleb1_set(Dataset):
             if self.audio_augument_cfg.get('use_speed_perturbation'):
                 waveform, _ = self.speed_perturbation(waveform)
             if self.audio_augument_cfg.get('add_noise'):
-                noise = torch.randn_like(waveform)
+                noise = torch.randn_like(waveform) + torch.rand_like(waveform)
                 snr = torch.randint(low=self.snr_range[0], high=self.snr_range[1], size=[1])
                 waveform = F.add_noise(waveform, noise, snr)
         return waveform

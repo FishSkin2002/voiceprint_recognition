@@ -120,13 +120,13 @@ class Attentive_Stat_Pooling_BN(nn.Module):
         return x
 
 
-# class ECAPA_TDNN_classifier(nn.Module):
-#     def __init__(self, num_speaker, model_ouput=192):
-#         super().__init__()
-#         self.num_speaker = num_speaker
-#         self.Linear = nn.Linear(model_ouput, num_speaker, bias=False)
-#         self.W = self.Linear.weight
-#
-#     def forward(self, x):
-#         cos_theta = F.cosine_similarity(self.W.unsqueeze(0), x.unsqueeze(1), dim=-1)
-#         return cos_theta
+class ECAPA_TDNN_classifier(nn.Module):
+    def __init__(self, num_speaker, model_ouput=192):
+        super().__init__()
+        self.num_speaker = num_speaker
+        self.Linear = nn.Linear(model_ouput, num_speaker, bias=False)
+        self.W = self.Linear.weight
+
+    def forward(self, x):
+        cos_theta = F.cosine_similarity(self.W.unsqueeze(0), x.unsqueeze(1), dim=-1)
+        return cos_theta

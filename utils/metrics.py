@@ -53,9 +53,10 @@ def cal_eer_threshold(fpr, fnr, all_score):
 
 
 def cal_min_dcf_threshold(fpr, fnr, all_score, p_target=1e-2, c_fa=1, c_miss=1):
-    dcf = c_miss * p_target * fpr + c_fa * (1 - p_target) * fnr
-    dcf, sorted_indices = torch.sort(dcf)
-    all_score = all_score[sorted_indices]
-    min_dcf = dcf[0].item()
-    min_dcf_threshold = all_score[0].item()
+    with torch.no_grad():
+        dcf = c_miss * p_target * fpr + c_fa * (1 - p_target) * fnr
+        dcf, sorted_indices = torch.sort(dcf)
+        all_score = all_score[sorted_indices]
+        min_dcf = dcf[0].item()
+        min_dcf_threshold = all_score[0].item()
     return min_dcf, min_dcf_threshold

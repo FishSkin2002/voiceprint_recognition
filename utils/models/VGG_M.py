@@ -19,8 +19,7 @@ class VGG_M(nn.Module):
             ('flatten', nn.Flatten()),
             ('fc6', nn.Linear(in_features=256 * 9 * 8, out_features=4096 * 8)),
             ('apool6', nn.AvgPool1d(kernel_size=8)),
-            ('fc7', nn.Linear(in_features=4096, out_features=1024)),
-            ('fc8', nn.Linear(in_features=1024, out_features=self.num_speaker))
+            ('fc7', nn.Linear(in_features=4096, out_features=1024))
         ]))
 
     def forward(self, x):
