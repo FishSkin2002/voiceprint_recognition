@@ -10,7 +10,7 @@ from torch.utils.data import DataLoader
 import torch.nn.functional as F
 
 from utils.feature_transform import feature_transform
-from utils.nn.Loss_Functions import AAMLoss
+from utils.nn.Loss_Functions import AAMLoss, AMLoss
 from utils.data.VoxCeleb1_set import VoxCeleb1_set
 from utils.metrics import accuracy, cal_fpr_fnr, cal_eer_threshold, cal_min_dcf_threshold
 from utils.models.ECAPA_TDNN import ECAPA_TDNN, ECAPA_TDNN_classifier
@@ -123,6 +123,8 @@ class voiceprint_recognition:
             self.criterion = nn.NLLLoss()
         elif self.use_loss == 'AAMLoss':
             self.criterion = AAMLoss(self.num_speaker)
+        elif self.use_loss == 'AMLoss':
+            self.criterion = AMLoss(self.num_speaker)
         else:
             raise ValueError(f'不支持{self.use_loss}损失函数')
         self.criterion = self.criterion.to(device=self.device)
