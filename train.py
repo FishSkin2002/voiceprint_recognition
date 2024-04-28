@@ -9,9 +9,9 @@ if __name__ == "__main__":
     timestr = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
     train_cfg = {
         'use_gpu': True,
-        'use_feature_extraction': 'MFCC',
-        'use_model': 'ECAPA_TDNN',
-        'use_loss': 'AAMLoss',
+        'use_feature_extraction': 'fbank',
+        'use_model': 'CNN_3D',
+        'use_loss': 'CrossEntropyLoss',
         'use_optimizer': 'Adam',
         'use_lr_scheduler': 'CyclicLR',
         'target_sample_rate': 16000,
@@ -21,8 +21,10 @@ if __name__ == "__main__":
     }
     dataset_cfg = {
         'data_path': './dataset/VoxCeleb1',
-        'max_duration': 3,
+        'max_duration': 0.8,
         'use_mono': True,
+        'stack_utterances': True,
+        'stack_num': 20,
         'audio_augument_cfg': {
             'use_speed_perturbation': True,
             'speed_perturbation_sequence': (0.9, 0.95, 1, 1.05, 1.1),
@@ -52,6 +54,9 @@ if __name__ == "__main__":
                     'hop_length': 160,
                     'n_mels': 80
                 }
+            },
+            'fbank': {
+                'num_mel_bins': 40
             }
         },
         'spec_augument_cfg': {

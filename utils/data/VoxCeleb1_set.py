@@ -1,3 +1,4 @@
+import math
 import os
 import random
 
@@ -75,7 +76,7 @@ class VoxCeleb1_set(Dataset):
 
     def __audio_crop(self, waveform):
         with torch.no_grad():
-            waveform_length = self.max_duration * self.target_sample_rate
+            waveform_length = math.floor(self.max_duration * self.target_sample_rate)
             if waveform.shape[1] > waveform_length:
                 random_number = random.randint(0, waveform.shape[1] - waveform_length)
                 waveform = waveform[:, random_number:random_number + waveform_length]
