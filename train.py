@@ -32,7 +32,6 @@ if __name__ == "__main__":
     }
     dataloader_cfg = {
         'batch_size': 128,
-        'shuffle': True,
         'num_workers': 16,
         'pin_memory': True
     }

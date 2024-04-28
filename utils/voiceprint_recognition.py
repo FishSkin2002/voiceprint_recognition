@@ -88,9 +88,9 @@ class voiceprint_recognition:
         print(
             f'数据集加载完成，训练集{len(self.train_set)}语音片段，验证集{len(self.dev_set)}语音片段，测试集{len(self.test_set)}语音片段')
         self.num_speaker = self.train_set.get_num_speaker()
-        self.train_loader = DataLoader(self.train_set, **self.dataloader_cfg)
-        self.dev_loader = DataLoader(self.dev_set, **self.dataloader_cfg)
-        self.test_loader = DataLoader(self.test_set, **self.dataloader_cfg)
+        self.train_loader = DataLoader(self.train_set, shuffle=True, **self.dataloader_cfg)
+        self.dev_loader = DataLoader(self.dev_set, shuffle=False, **self.dataloader_cfg)
+        self.test_loader = DataLoader(self.test_set, shuffle=False, **self.dataloader_cfg)
 
     def __set_feature_extractor(self):
         self.transform = feature_transform(self.use_feature_extraction, **self.transform_cfg)
@@ -191,7 +191,6 @@ class voiceprint_recognition:
     def evaluate(self):
         print('验证阶段开始')
         self.model.eval()
-        all_score = None
         all_outputs = None
         all_labels = None
         all_identities = None
@@ -203,18 +202,22 @@ class voiceprint_recognition:
                 features = self.transform(waveforms)
                 identities = self.model.backbone(features)
                 outputs = self.model.classifier(identities)
+
                 if all_labels is None:
                     all_labels = labels
                 else:
                     all_labels = torch.cat([all_labels, labels], dim=0)
+
                 if all_identities is None:
                     all_identities = identities
                 else:
                     all_identities = torch.cat([all_identities, identities], dim=0)
+
                 if all_outputs is None:
                     all_outputs = outputs
                 else:
                     all_outputs = torch.cat([all_outputs, outputs], dim=0)
+
             score_matrix = F.cosine_similarity(all_identities.unsqueeze(0), all_identities.unsqueeze(1), dim=-1)
             labels_matrix = torch.eq(all_labels.unsqueeze(0), all_labels.unsqueeze(1))
             all_score = score_matrix.view(-1)
