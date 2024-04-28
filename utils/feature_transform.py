@@ -30,10 +30,7 @@ class feature_transform(nn.Module):
 
     def forward(self, waveform):
         with torch.no_grad():
-            if self.use_feature_extraction == 'fbank':
-                feature = fbank(waveform, **self.spec_augument_cfg['fbank'])
-            else:
-                feature = self.extractor(waveform)
+            feature = self.extractor(waveform)
             if self.spec_augument_cfg:
                 feature = self.__spec_augument(feature)
         return feature

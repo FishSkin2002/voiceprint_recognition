@@ -15,8 +15,6 @@ class VoxCeleb1_set(Dataset):
                  max_duration=2,
                  target_sample_rate=16000,
                  use_mono=True,
-                 stack_utterances=False,
-                 stack_num=20,
                  audio_augument_cfg=None):
         super().__init__()
         self.subset = subset
@@ -28,8 +26,6 @@ class VoxCeleb1_set(Dataset):
         self.metadata = os.path.join(data_path, './iden_split.txt')
         self.waveforms_list = []
         self.idx_dict = {}
-        self.stack_utterances = stack_utterances
-        self.stack_num = stack_num
         if self.subset == 'train':
             self.subsetIndex = '1'
         elif self.subset == 'dev':
@@ -83,9 +79,6 @@ class VoxCeleb1_set(Dataset):
                 zeros_tensor = torch.zeros([waveform.shape[0], waveform_length])
                 zeros_tensor[0:waveform.shape[1]] = waveform
                 waveform = zeros_tensor
-            if self.stack_utterances:
-                waveform = waveform.unsqueeze(1)
-                waveform = torch.cat([waveform] * self.stack_num, dim=1)
             if self.use_mono:
                 waveform = torch.mean(waveform, dim=0, keepdim=False)
         return waveform
