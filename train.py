@@ -10,8 +10,8 @@ if __name__ == "__main__":
     train_cfg = {
         'use_gpu': True,
         'use_feature_extraction': 'fbank',
-        'use_model': 'CNN_3D',
-        'use_loss': 'CrossEntropyLoss',
+        'use_model': 'ECAPA_TDNN',
+        'use_loss': 'AMLoss',
         'use_optimizer': 'Adam',
         'use_lr_scheduler': 'CyclicLR',
         'target_sample_rate': 16000,
@@ -21,7 +21,7 @@ if __name__ == "__main__":
     }
     dataset_cfg = {
         'data_path': './dataset/VoxCeleb1',
-        'max_duration': 0.8,
+        'max_duration': 3,
         'use_mono': True,
         'audio_augument_cfg': {
             'use_speed_perturbation': True,
@@ -37,8 +37,6 @@ if __name__ == "__main__":
     }
     transform_cfg = {
         'feature_extraction_cfg': {
-            'stack_utterances': True,
-            'stack_num': 20,
             'Spectrogram': {
                 'n_fft': 1024,
                 'win_length': 400,
