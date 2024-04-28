@@ -10,6 +10,7 @@ from torch.utils.data import DataLoader
 import torch.nn.functional as F
 
 from utils.feature_transform import feature_transform
+from utils.models.CNN_3D import CNN_3D
 from utils.nn.Loss_Functions import AAMLoss
 from utils.data.VoxCeleb1_set import VoxCeleb1_set
 from utils.metrics import accuracy, cal_fpr_fnr, cal_eer_threshold, cal_min_dcf_threshold
@@ -113,6 +114,11 @@ class voiceprint_recognition:
             ]))
             self.model = self.model.to(device=self.device)
             summary(self.model, input_size=[1, 1, 513, 301])
+        elif self.use_model == 'CNN_3D':
+            self.model = nn.Sequential(OrderedDict([
+                ('backbone', CNN_3D()),
+                ('classifier', nn.Linear(in_features=128 * 4 * 6 * 2, out_features=self.num_speaker))
+            ]))
         else:
             raise ValueError(f'不支持{self.use_model}模型')
 

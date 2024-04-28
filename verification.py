@@ -12,8 +12,8 @@ from utils.models.ECAPA_TDNN import ECAPA_TDNN
 
 if __name__ == "__main__":
     with torch.no_grad():
-        path_1 = os.path.join('C:/Users/24667/Documents/录音/录音 (5).m4a')
-        path_2 = os.path.join('C:/Users/24667/Documents/录音/录音 (4).m4a')
+        path_1 = os.path.join('C:/Users/24667/Documents/录音/录音 (10).m4a')
+        path_2 = os.path.join('C:/Users/24667/Documents/录音/录音 (7).m4a')
         target_sample_rate = 16000
         length = 3
         model_path = 'test/ECAPA_TDNN.pth'
@@ -106,8 +106,8 @@ if __name__ == "__main__":
         rate = (score + 1) / 2
         threshold_rate = (threshold + 1) / 2
         if score < threshold:
-            print(f'拒绝×\n')
+            print(f'\n  拒绝 ×\n')
         else:
-            print(f'通过√\n')
+            print(f'\n  通过 √\n')
         print(f'相似度: {rate:.2%}\n'
               f'当前判决门限: {threshold_rate:.2%}')
