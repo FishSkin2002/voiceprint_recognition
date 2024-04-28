@@ -101,14 +101,14 @@ class voiceprint_recognition:
     def __set_model(self):
         if self.use_model == 'ECAPA_TDNN':
             self.model = nn.Sequential(OrderedDict([
-                ('backbone', ECAPA_TDNN(self.model_cfg.get('ECAPA_TDNN'))),
+                ('backbone', ECAPA_TDNN(**self.model_cfg.get('ECAPA_TDNN'))),
                 ('classifier', ECAPA_TDNN_classifier(self.num_speaker))
             ]))
             self.model = self.model.to(device=self.device)
             summary(self.model, input_size=[1, 80, 201])
         elif self.use_model == 'VGG_M':
             self.model = nn.Sequential(OrderedDict([
-                ('backbone', VGG_M(self.model_cfg.get('VGG_M'))),
+                ('backbone', VGG_M(**self.model_cfg.get('VGG_M'))),
                 ('classifier', nn.Linear(in_features=1024, out_features=self.num_speaker))
             ]))
             self.model = self.model.to(device=self.device)
@@ -182,12 +182,21 @@ class voiceprint_recognition:
         os.makedirs(model_path, exist_ok=True)
         torch.save(self.model.backbone.state_dict(), os.path.join(model_path, f'{self.use_model}.pth'))
         with open(os.path.join(self.save_model_path, f'{self.use_model}/metrics.txt'), 'a') as file:
-            file.write(f'Epoch: {now_epoch},    '
-                       f'ACC: {acc:.10f},    '
-                       f'EER: {eer:.10f},    '
-                       f'EER threshold: {eer_threshold:.10f}    '
-                       f'minDCF: {min_dcf:.10f},    '
-                       f'minDCF threshold: {min_dcf_threshold:.10f}\n')
+            if eer == self.best_eer:
+                file.write(f'Epoch: {now_epoch},    '
+                           f'ACC: {acc:.10f},    '
+                           f'EER: {eer:.10f},    '
+                           f'EER threshold: {eer_threshold:.10f}    '
+                           f'minDCF: {min_dcf:.10f},    '
+                           f'minDCF threshold: {min_dcf_threshold:.10f}'
+                           f'best_model\n')
+            else:
+                file.write(f'Epoch: {now_epoch},    '
+                           f'ACC: {acc:.10f},    '
+                           f'EER: {eer:.10f},    '
+                           f'EER threshold: {eer_threshold:.10f}    '
+                           f'minDCF: {min_dcf:.10f},    '
+                           f'minDCF threshold: {min_dcf_threshold:.10f}\n')
         print(f'模型成功保存到{model_path}')
 
     def evaluate(self):
@@ -220,19 +229,20 @@ class voiceprint_recognition:
                 else:
                     all_outputs = torch.cat([all_outputs, outputs], dim=0)
 
-            score_matrix = F.cosine_similarity(all_identities.unsqueeze(0), all_identities.unsqueeze(1), dim=-1)
-            labels_matrix = torch.eq(all_labels.unsqueeze(0), all_labels.unsqueeze(1))
-            all_score = score_matrix.view(-1)
-            all_labels = labels_matrix.view(-1)
             print('验证集处理完毕')
             print('正在计算模型指标……')
             acc = accuracy(all_outputs, all_labels)
+            all_identities = F.normalize(all_identities, dim=-1)
+            score_matrix = F.linear(all_identities, all_identities)
+            labels_matrix = torch.eq(all_labels.unsqueeze(0), all_labels.unsqueeze(1))
+            all_score = score_matrix.view(-1)
+            all_labels = labels_matrix.view(-1)
             fpr, fnr, all_score = cal_fpr_fnr(all_score, all_labels)
             eer, eer_threshold = cal_eer_threshold(fpr, fnr, all_score)
             min_dcf, min_dcf_threshold = cal_min_dcf_threshold(fpr, fnr, all_score)
             print(f'Speaker Identification    '
                   f'ACC: {acc:.4%}\n'
-                  f'Speaker Verification task'
+                  f'Speaker Verification    '
                   f'EER: {eer:.4%}    '
                   f'EER threshold: {eer_threshold:.8f}    '
                   f'minDCF: {min_dcf:.8f}    '

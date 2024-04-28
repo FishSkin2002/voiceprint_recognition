@@ -83,5 +83,6 @@ if __name__ == "__main__":
                                                     dataset_cfg=dataset_cfg,
                                                     dataloader_cfg=dataloader_cfg,
                                                     transform_cfg=transform_cfg,
+                                                    model_cfg=model_cfg,
                                                     scheduler_cfg=scheduler_cfg)
     voiceprint_recognition.train()

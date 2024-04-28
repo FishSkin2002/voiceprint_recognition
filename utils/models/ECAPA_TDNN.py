@@ -128,5 +128,5 @@ class ECAPA_TDNN_classifier(nn.Module):
         self.W = self.Linear.weight
 
     def forward(self, x):
-        cos_theta = F.cosine_similarity(self.W.unsqueeze(0), x.unsqueeze(1), dim=-1)
+        cos_theta = F.linear(F.normalize(x, dim=-1), F.normalize(self.W, dim=-1))
         return cos_theta

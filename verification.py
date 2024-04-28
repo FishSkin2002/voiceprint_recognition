@@ -12,14 +12,14 @@ from utils.models.ECAPA_TDNN import ECAPA_TDNN
 
 if __name__ == "__main__":
     with torch.no_grad():
-        path_1 = './test/录音 (66).m4a'
-        path_2 = './test/录音 (68).m4a'
+        path_1 = os.path.join('C:/Users/24667/Documents/录音/录音 (5).m4a')
+        path_2 = os.path.join('C:/Users/24667/Documents/录音/录音 (4).m4a')
         target_sample_rate = 16000
         length = 3
         model_path = 'test/ECAPA_TDNN.pth'
         use_mono = True
         use_feature_extraction = 'MFCC'
-        threshold = 0.5
+        threshold = 0.6
         vad_triger = 3
         transform_cfg = {
             'feature_extraction_cfg': {
@@ -50,6 +50,12 @@ if __name__ == "__main__":
                     'freq_mask_param': 10,
                     'iid_masks': True
                 },
+            }
+        }
+        model_cfg = {
+            'ECAPA_TDNN': {
+                'channels': 1024,
+                'bottleneck': 128
             }
         }
 
@@ -91,7 +97,7 @@ if __name__ == "__main__":
         feature_extraction = feature_transform(use_feature_extraction, **transform_cfg)
         feature_1 = feature_extraction(audio_1)
         feature_2 = feature_extraction(audio_2)
-        model = ECAPA_TDNN()
+        model = ECAPA_TDNN(**model_cfg['ECAPA_TDNN'])
         model.load_state_dict(torch.load(model_path))
         model.eval()
         output_1 = model(feature_1)
