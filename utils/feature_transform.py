@@ -8,11 +8,15 @@ class feature_transform(nn.Module):
     def __init__(self,
                  use_feature_extraction='MFCC',
                  feature_extraction_cfg=None,
-                 spec_augument_cfg=None):
+                 spec_augument_cfg=None,
+                 stack_utterances=False,
+                 stack_num=20):
         super().__init__()
         self.use_feature_extraction = use_feature_extraction
         self.feature_extraction_cfg = feature_extraction_cfg
         self.spec_augument_cfg = spec_augument_cfg
+        self.stack_utterances = stack_utterances
+        self.stack_num = stack_num
 
         if self.use_feature_extraction == 'Spectrogram':
             self.extractor = T.Spectrogram(**self.feature_extraction_cfg['Spectrogram'])
@@ -31,9 +35,15 @@ class feature_transform(nn.Module):
     def forward(self, waveform):
         with torch.no_grad():
             if self.use_feature_extraction == 'fbank':
-                feature = fbank(waveform, **self.spec_augument_cfg['fbank'])
+                feature = fbank(waveform, **self.feature_extraction_cfg['fbank'])
             else:
                 feature = self.extractor(waveform)
+
+            if self.stack_utterances:
+                feature = feature.unsqueeze(-3)
+                feature = torch.cat([feature] * self.stack_num, dim=-3)
+                feature = feature.unsqueeze(-4)
+
             if self.spec_augument_cfg:
                 feature = self.__spec_augument(feature)
         return feature

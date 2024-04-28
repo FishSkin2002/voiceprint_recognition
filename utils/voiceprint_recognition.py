@@ -117,7 +117,10 @@ class voiceprint_recognition:
         elif self.use_model == 'CNN_3D':
             self.model = nn.Sequential(OrderedDict([
                 ('backbone', CNN_3D()),
-                ('classifier', nn.Linear(in_features=128 * 4 * 6 * 2, out_features=self.num_speaker))
+                ('classifier', nn.Sequential(
+                    nn.Flatten(),
+                    nn.Linear(in_features=128 * 4 * 6 * 2, out_features=self.num_speaker)
+                ))
             ]))
         else:
             raise ValueError(f'不支持{self.use_model}模型')

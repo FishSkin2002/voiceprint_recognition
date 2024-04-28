@@ -23,8 +23,6 @@ if __name__ == "__main__":
         'data_path': './dataset/VoxCeleb1',
         'max_duration': 0.8,
         'use_mono': True,
-        'stack_utterances': True,
-        'stack_num': 20,
         'audio_augument_cfg': {
             'use_speed_perturbation': True,
             'speed_perturbation_sequence': (0.9, 0.95, 1, 1.05, 1.1),
@@ -39,6 +37,8 @@ if __name__ == "__main__":
     }
     transform_cfg = {
         'feature_extraction_cfg': {
+            'stack_utterances': True,
+            'stack_num': 20,
             'Spectrogram': {
                 'n_fft': 1024,
                 'win_length': 400,

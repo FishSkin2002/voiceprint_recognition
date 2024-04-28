@@ -25,6 +25,7 @@ class CNN_3D(nn.Module):
         self.conv41 = nn.Conv3d(64, 128, (3, 3, 3), stride=(1, 1, 1))
         self.conv41_bn = nn.BatchNorm3d(128)
         self.conv41_activation = nn.PReLU()
+        self.flatten = nn.Flatten()
 
     def forward(self, x):
         x = self.conv11(x)
