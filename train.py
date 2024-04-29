@@ -9,7 +9,7 @@ if __name__ == "__main__":
     timestr = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
     train_cfg = {
         'use_gpu': True,
-        'use_feature_extraction': 'fbank',
+        'use_feature_extraction': 'MFCC',
         'use_model': 'ECAPA_TDNN',
         'use_loss': 'AMLoss',
         'use_optimizer': 'Adam',
@@ -52,9 +52,6 @@ if __name__ == "__main__":
                     'hop_length': 160,
                     'n_mels': 80
                 }
-            },
-            'fbank': {
-                'num_mel_bins': 40
             }
         },
         'spec_augument_cfg': {

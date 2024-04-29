@@ -29,5 +29,5 @@ class AMLoss(nn.Module):
     def forward(self, cos_theta, label):
         cos_theta = self.scale * cos_theta
         one_hot = F.one_hot(label, self.num_speaker).to(torch.bool)
-        logits = torch.where(one_hot, cos_theta - self.m, cos_theta)
+        logits = torch.where(one_hot, cos_theta - self.margin, cos_theta)
         return F.cross_entropy(logits, label)

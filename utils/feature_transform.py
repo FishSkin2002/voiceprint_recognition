@@ -18,7 +18,7 @@ class feature_transform(nn.Module):
             self.extractor = T.Spectrogram(**self.feature_extraction_cfg['Spectrogram'])
         elif self.use_feature_extraction == 'MFCC':
             self.extractor = T.MFCC(**self.feature_extraction_cfg['MFCC'])
-        elif self.use_feature_extraction == 'fbank':
+        elif self.use_feature_extraction == 'FBank':
             pass
         else:
             raise ValueError(f'不支持{self.use_feature_extraction}特征提取方式')
@@ -30,7 +30,11 @@ class feature_transform(nn.Module):
 
     def forward(self, waveform):
         with torch.no_grad():
-            feature = self.extractor(waveform)
+            if self.use_feature_extraction == 'FBank':
+                pass
+            else:
+                feature = self.extractor(waveform)
+
             if self.spec_augument_cfg:
                 feature = self.__spec_augument(feature)
         return feature

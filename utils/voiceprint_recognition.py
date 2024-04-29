@@ -15,6 +15,7 @@ from utils.data.VoxCeleb1_set import VoxCeleb1_set
 from utils.metrics import accuracy, cal_fpr_fnr, cal_eer_threshold, cal_min_dcf_threshold
 from utils.models.ECAPA_TDNN import ECAPA_TDNN, ECAPA_TDNN_classifier
 from utils.models.VGG_M import VGG_M
+from utils.other.ERes2Net import ERes2Net
 
 
 class voiceprint_recognition:
@@ -113,6 +114,13 @@ class voiceprint_recognition:
             ]))
             self.model = self.model.to(device=self.device)
             summary(self.model, input_size=[1, 1, 513, 301])
+        elif self.use_model == 'ERes2Net':
+            self.model = nn.Sequential(OrderedDict([
+                ('backbone', ERes2Net()),
+                ('classifier', ECAPA_TDNN_classifier(self.num_speaker))
+            ]))
+            self.model = self.model.to(device=self.device)
+            summary(self.model, input_size=[1, 1, 80, 40])
         else:
             raise ValueError(f'不支持{self.use_model}模型')
 
@@ -151,7 +159,10 @@ class voiceprint_recognition:
             self.optimizer.zero_grad()
             waveforms = waveforms.to(device=self.device)
             labels = labels.to(device=self.device)
-            features = self.transform(waveforms)
+            if self.use_feature_extraction == 'FBank':
+                features = waveforms
+            else:
+                features = self.transform(waveforms)
             outputs = self.model(features)
             loss = self.criterion(outputs, labels)
             loss.backward()

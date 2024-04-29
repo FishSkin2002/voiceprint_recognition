@@ -7,6 +7,7 @@ import torchaudio
 from torch.utils.data import Dataset
 import torchaudio.functional as F
 import torchaudio.transforms as T
+from torchaudio.compliance.kaldi import fbank
 
 
 class VoxCeleb1_set(Dataset):
@@ -16,7 +17,8 @@ class VoxCeleb1_set(Dataset):
                  max_duration=2,
                  target_sample_rate=16000,
                  use_mono=True,
-                 audio_augument_cfg=None):
+                 audio_augument_cfg=None,
+                 use_FBank=False):
         super().__init__()
         self.subset = subset
         self.target_sample_rate = target_sample_rate
@@ -27,6 +29,7 @@ class VoxCeleb1_set(Dataset):
         self.metadata = os.path.join(data_path, './iden_split.txt')
         self.waveforms_list = []
         self.idx_dict = {}
+        self.use_FBank = use_FBank
         if self.subset == 'train':
             self.subsetIndex = '1'
         elif self.subset == 'dev':
@@ -62,6 +65,8 @@ class VoxCeleb1_set(Dataset):
                 waveform = F.resample(waveform, sample_rate, self.target_sample_rate)
             waveform = self.__audio_crop(waveform)
             label = self.idx_dict[idx]
+            if self.use_FBank:
+                waveform = fbank(waveform, num_mel_bins=40)
         return waveform, label
 
     def __len__(self):
