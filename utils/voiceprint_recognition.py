@@ -10,11 +10,11 @@ from torch.utils.tensorboard import SummaryWriter
 from torchinfo import summary
 
 from utils.data.VoxCeleb1_set import VoxCeleb1_set
+from utils.download.ERes2Net import ERes2Net
 from utils.metrics import accuracy, cal_fpr_fnr, cal_eer_threshold, cal_min_dcf_threshold
 from utils.models.ECAPA_TDNN import ECAPA_TDNN
 from utils.models.classifier import cosine_classifier
 from utils.nn.Loss_Functions import AAMLoss, AMLoss
-from utils.other.ERes2Net import ERes2Net
 from utils.transform.feature_transform import feature_transform
 
 
