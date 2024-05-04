@@ -38,9 +38,7 @@ class preprocessor(nn.Module):
 
     def forward(self, waveform, sample_rate):
         with torch.no_grad():
-
-            if self.subset == 'train':
-                waveform = self.__audio_augument(waveform)
+            waveform = self.__audio_augument(waveform)
 
             if sample_rate != self.target_sample_rate:
                 waveform = F.resample(waveform, sample_rate, self.target_sample_rate)

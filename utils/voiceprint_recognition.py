@@ -98,14 +98,14 @@ class voiceprint_recognition:
                 ('classifier', cosine_classifier(self.num_speaker))
             ]))
             self.model = self.model.to(device=self.device)
-            summary(self.model, input_size=[1, 80, 201])
+            summary(self.model, input_size=[2, 80, 201])
         elif self.use_model == 'ERes2Net':
             self.model = nn.Sequential(OrderedDict([
                 ('backbone', ERes2Net()),
                 ('classifier', cosine_classifier(self.num_speaker))
             ]))
             self.model = self.model.to(device=self.device)
-            summary(self.model, input_size=[1, 1, 80, 40])
+            summary(self.model, input_size=[2, 40, 80])
         else:
             raise ValueError(f'不支持{self.use_model}模型')
 
@@ -145,6 +145,8 @@ class voiceprint_recognition:
             waveforms = waveforms.to(device=self.device)
             labels = labels.to(device=self.device)
             features = self.transform(waveforms)
+            if self.use_model == 'ERes2Net':
+                features = torch.transpose(features, 1, 2)
             outputs = self.model(features)
             labels = labels.to(device=self.device)
             loss = self.criterion(outputs, labels)
