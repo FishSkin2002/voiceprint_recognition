@@ -7,7 +7,7 @@ import torch.nn.functional as F
 import torchaudio.functional as audioF
 from pydub import AudioSegment
 
-from utils.feature_transform import feature_transform
+from utils.transform.feature_transform import feature_transform
 from utils.models.ECAPA_TDNN import ECAPA_TDNN
 
 if __name__ == "__main__":

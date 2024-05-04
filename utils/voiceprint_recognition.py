@@ -9,64 +9,58 @@ from collections import OrderedDict
 from torch.utils.data import DataLoader
 import torch.nn.functional as F
 
-from utils.feature_transform import feature_transform
+from utils.models.classifier import cosine_classifier
 from utils.nn.Loss_Functions import AAMLoss, AMLoss
 from utils.data.VoxCeleb1_set import VoxCeleb1_set
 from utils.metrics import accuracy, cal_fpr_fnr, cal_eer_threshold, cal_min_dcf_threshold
-from utils.models.ECAPA_TDNN import ECAPA_TDNN, ECAPA_TDNN_classifier
-from utils.models.VGG_M import VGG_M
+from utils.models.ECAPA_TDNN import ECAPA_TDNN
 from utils.other.ERes2Net import ERes2Net
+from utils.transform.feature_transform import feature_transform
 
 
 class voiceprint_recognition:
     def __init__(self,
-                 use_gpu=True,
-                 use_feature_extraction='MFCC',
-                 use_model='ECAPA_TDNN',
-                 use_loss='NLLoss',
-                 use_optimizer='Adam',
-                 use_lr_scheduler='CyclicLR',
-                 target_sample_rate=16000,
-                 train_epoch=60,
+                 use_gpu,
+                 use_feature_extraction,
+                 use_model,
+                 use_loss,
+                 use_optimizer,
+                 use_lr_scheduler,
+                 train_epoch,
+                 dataset_cfg,
+                 dataloader_cfg,
+                 feature_extraction_cfg,
+                 model_cfg,
+                 scheduler_cfg,
                  logdir='./logs',
-                 save_model_path='./trained_models',
-                 dataset_cfg=None,
-                 dataloader_cfg=None,
-                 transform_cfg=None,
-                 model_cfg=None,
-                 scheduler_cfg=None):
+                 save_model_path='./trained_models'):
         if use_gpu:
             assert torch.cuda.is_available(), 'CUDA不可用'
             self.device = torch.device('cuda')
         else:
             self.device = torch.device('cpu')
-        self.use_feature_extraction = use_feature_extraction
         self.use_model = use_model
         self.use_loss = use_loss
         self.use_optimizer = use_optimizer
         self.use_lr_scheduler = use_lr_scheduler
-        self.target_sample_rate = target_sample_rate
         self.train_epoch = train_epoch
         self.save_model_path = save_model_path
         self.writer = SummaryWriter(os.path.join(logdir, use_model))
         self.train_set = None
         self.dev_set = None
-        self.test_set = None
         self.num_speaker = None
         self.train_loader = None
         self.dev_loader = None
-        self.test_loader = None
-        self.transform = None
+        self.feature_transform = None
         self.model = None
-        self.criterion_veri = None
-        self.criterion_iden = None
         self.optimizer = None
         self.scheduler = None
         self.total_train_step = 0
         self.total_dev_step = 0
         self.dataset_cfg = dataset_cfg
         self.dataloader_cfg = dataloader_cfg
-        self.transform_cfg = transform_cfg
+        self.use_feature_extraction = use_feature_extraction
+        self.feature_extraction_cfg = feature_extraction_cfg
         self.model_cfg = model_cfg
         self.scheduler_cfg = scheduler_cfg
         self.best_eer = 1
@@ -87,37 +81,28 @@ class voiceprint_recognition:
     def __set_data(self):
         self.train_set = VoxCeleb1_set('train', **self.dataset_cfg)
         self.dev_set = VoxCeleb1_set('dev', **self.dataset_cfg)
-        self.test_set = VoxCeleb1_set('test', **self.dataset_cfg)
-        print(
-            f'数据集加载完成，训练集{len(self.train_set)}语音片段，验证集{len(self.dev_set)}语音片段，测试集{len(self.test_set)}语音片段')
+        print(f'数据集加载完成，训练集{len(self.train_set)}语音片段，'
+              f'验证集{len(self.dev_set)}语音片段')
         self.num_speaker = self.train_set.get_num_speaker()
         self.train_loader = DataLoader(self.train_set, shuffle=True, **self.dataloader_cfg)
         self.dev_loader = DataLoader(self.dev_set, shuffle=False, **self.dataloader_cfg)
-        self.test_loader = DataLoader(self.test_set, shuffle=False, **self.dataloader_cfg)
 
     def __set_feature_extractor(self):
-        self.transform = feature_transform(self.use_feature_extraction, **self.transform_cfg)
+        self.transform = feature_transform(self.use_feature_extraction, **self.feature_extraction_cfg)
         self.transform = self.transform.to(device=self.device)
 
     def __set_model(self):
         if self.use_model == 'ECAPA_TDNN':
             self.model = nn.Sequential(OrderedDict([
                 ('backbone', ECAPA_TDNN(**self.model_cfg.get('ECAPA_TDNN'))),
-                ('classifier', ECAPA_TDNN_classifier(self.num_speaker))
+                ('classifier', cosine_classifier(self.num_speaker))
             ]))
             self.model = self.model.to(device=self.device)
             summary(self.model, input_size=[1, 80, 201])
-        elif self.use_model == 'VGG_M':
-            self.model = nn.Sequential(OrderedDict([
-                ('backbone', VGG_M(**self.model_cfg.get('VGG_M'))),
-                ('classifier', nn.Linear(in_features=1024, out_features=self.num_speaker))
-            ]))
-            self.model = self.model.to(device=self.device)
-            summary(self.model, input_size=[1, 1, 513, 301])
         elif self.use_model == 'ERes2Net':
             self.model = nn.Sequential(OrderedDict([
                 ('backbone', ERes2Net()),
-                ('classifier', ECAPA_TDNN_classifier(self.num_speaker))
+                ('classifier', cosine_classifier(self.num_speaker))
             ]))
             self.model = self.model.to(device=self.device)
             summary(self.model, input_size=[1, 1, 80, 40])
@@ -159,11 +144,9 @@ class voiceprint_recognition:
             self.optimizer.zero_grad()
             waveforms = waveforms.to(device=self.device)
             labels = labels.to(device=self.device)
-            if self.use_feature_extraction == 'FBank':
-                features = waveforms
-            else:
-                features = self.transform(waveforms)
+            features = self.transform(waveforms)
             outputs = self.model(features)
+            labels = labels.to(device=self.device)
             loss = self.criterion(outputs, labels)
             loss.backward()
             self.optimizer.step()
@@ -220,10 +203,9 @@ class voiceprint_recognition:
         all_identities = None
         with torch.no_grad():
             print('正在处理验证集……')
-            for waveforms, labels in self.dev_loader:
-                waveforms = waveforms.to(device=self.device)
+            for features, _, labels in self.dev_loader:
+                features = features.to(device=self.device)
                 labels = labels.to(device=self.device)
-                features = self.transform(waveforms)
                 identities = self.model.backbone(features)
                 outputs = self.model.classifier(identities)
 
