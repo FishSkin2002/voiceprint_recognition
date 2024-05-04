@@ -14,7 +14,7 @@ if __name__ == "__main__":
         'use_loss': 'AAMLoss',
         'use_optimizer': 'Adam',
         'use_lr_scheduler': 'CyclicLR',
-        'train_epoch': 100,
+        'train_epoch': 30,
         'logdir': os.path.join('./logs', timestr),
         'save_model_path': os.path.join('./trained_models', timestr)
     }
