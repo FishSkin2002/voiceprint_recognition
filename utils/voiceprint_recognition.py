@@ -209,6 +209,8 @@ class voiceprint_recognition:
                 waveforms = waveforms.to(device=self.device)
                 labels = labels.to(device=self.device)
                 features = self.transform(waveforms)
+                if self.use_model == 'ERes2Net':
+                    features = torch.transpose(features, 1, 2)
                 identities = self.model.backbone(features)
                 outputs = self.model.classifier(identities)
 

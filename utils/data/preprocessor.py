@@ -38,7 +38,7 @@ class preprocessor(nn.Module):
 
     def forward(self, waveform, sample_rate):
         with torch.no_grad():
-            waveform = self.__audio_augument(waveform)
+            waveform = self.__audio_augment(waveform)
 
             if sample_rate != self.target_sample_rate:
                 waveform = F.resample(waveform, sample_rate, self.target_sample_rate)
@@ -54,7 +54,7 @@ class preprocessor(nn.Module):
                 waveform = waveform[:, random_number:random_number + self.waveform_length]
             elif waveform.shape[1] < self.waveform_length:
                 zeros_tensor = torch.zeros([waveform.shape[0], self.waveform_length])
-                zeros_tensor[0:waveform.shape[1]] = waveform
+                zeros_tensor[:, 0:waveform.shape[1]] = waveform
                 waveform = zeros_tensor
 
             if not self.keep_audio_channel:
@@ -62,7 +62,7 @@ class preprocessor(nn.Module):
 
         return waveform
 
-    def __audio_augument(self, waveform):
+    def __audio_augment(self, waveform):
         with torch.no_grad():
 
             if self.use_speed_perturbation:
