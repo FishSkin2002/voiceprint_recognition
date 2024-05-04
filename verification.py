@@ -21,7 +21,8 @@ if __name__ == "__main__":
         use_feature_extraction = 'MFCC'
         threshold = 0.6
         vad_triger = 3
-        transform_cfg = {
+        feature_extraction_cfg = {
+            'use_mfcc_cms': True,
             'feature_extraction_cfg': {
                 'Spectrogram': {
                     'n_fft': 1024,
@@ -40,16 +41,12 @@ if __name__ == "__main__":
                     }
                 }
             },
-            'spec_augument_cfg': {
-                'use_mfcc_cms': True,
-                'time_masking': {
-                    'time_mask_param': 5,
-                    'iid_masks': True
-                },
-                'freq_masking': {
-                    'freq_mask_param': 10,
-                    'iid_masks': True
-                },
+            'Augmentations_cfg': {
+                'time_masking': True,
+                'time_mask_param': 5,
+                'freq_masking': True,
+                'freq_mask_param': 10,
+                'iid_masks': True
             }
         }
         model_cfg = {
@@ -94,7 +91,7 @@ if __name__ == "__main__":
 
         audio_1 = audio_1.unsqueeze(0)
         audio_2 = audio_2.unsqueeze(0)
-        feature_extraction = feature_transform(use_feature_extraction, **transform_cfg)
+        feature_extraction = feature_transform(use_feature_extraction, **feature_extraction_cfg)
         feature_1 = feature_extraction(audio_1)
         feature_2 = feature_extraction(audio_2)
         model = ECAPA_TDNN(**model_cfg['ECAPA_TDNN'])
