@@ -1,6 +1,6 @@
 import torch
-from torch import nn
 import torchaudio.transforms as T
+from torch import nn
 
 
 class Augmentations(nn.Module):

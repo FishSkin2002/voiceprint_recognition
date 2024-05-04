@@ -2,13 +2,13 @@ import os
 import random
 
 import torch
-import torchaudio
 import torch.nn.functional as F
+import torchaudio
 import torchaudio.functional as audioF
 from pydub import AudioSegment
 
-from utils.transform.feature_transform import feature_transform
 from utils.models.ECAPA_TDNN import ECAPA_TDNN
+from utils.transform.feature_transform import feature_transform
 
 if __name__ == "__main__":
     with torch.no_grad():
