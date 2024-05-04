@@ -52,7 +52,7 @@ class voiceprint_recognition:
         self.num_speaker = None
         self.train_loader = None
         self.dev_loader = None
-        self.feature_transform = None
+        self.transform = None
         self.model = None
         self.optimizer = None
         self.scheduler = None
@@ -205,9 +205,10 @@ class voiceprint_recognition:
         all_identities = None
         with torch.no_grad():
             print('正在处理验证集……')
-            for features, labels in self.dev_loader:
-                features = features.to(device=self.device)
+            for waveforms, labels in self.dev_loader:
+                waveforms = waveforms.to(device=self.device)
                 labels = labels.to(device=self.device)
+                features = self.transform(waveforms)
                 identities = self.model.backbone(features)
                 outputs = self.model.classifier(identities)
 
