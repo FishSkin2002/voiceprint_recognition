@@ -205,7 +205,7 @@ class voiceprint_recognition:
         all_identities = None
         with torch.no_grad():
             print('正在处理验证集……')
-            for features, _, labels in self.dev_loader:
+            for features, labels in self.dev_loader:
                 features = features.to(device=self.device)
                 labels = labels.to(device=self.device)
                 identities = self.model.backbone(features)
