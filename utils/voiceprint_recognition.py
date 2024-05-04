@@ -39,6 +39,7 @@ class voiceprint_recognition:
             self.device = torch.device('cuda')
         else:
             self.device = torch.device('cpu')
+        self.use_feature_extraction = use_feature_extraction
         self.use_model = use_model
         self.use_loss = use_loss
         self.use_optimizer = use_optimizer
@@ -57,13 +58,12 @@ class voiceprint_recognition:
         self.scheduler = None
         self.total_train_step = 0
         self.total_dev_step = 0
+        self.best_eer = 1
         self.dataset_cfg = dataset_cfg
         self.dataloader_cfg = dataloader_cfg
-        self.use_feature_extraction = use_feature_extraction
         self.feature_extraction_cfg = feature_extraction_cfg
         self.model_cfg = model_cfg
         self.scheduler_cfg = scheduler_cfg
-        self.best_eer = 1
 
     def train(self):
         self.__set_data()
