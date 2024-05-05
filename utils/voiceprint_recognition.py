@@ -145,8 +145,6 @@ class voiceprint_recognition:
             waveforms = waveforms.to(device=self.device)
             labels = labels.to(device=self.device)
             features = self.transform(waveforms)
-            if self.use_model == 'ERes2Net' and self.use_feature_extraction == 'MFCC':
-                features = torch.transpose(features, 1, 2)
             outputs = self.model(features)
             labels = labels.to(device=self.device)
             loss = self.criterion(outputs, labels)
@@ -209,8 +207,6 @@ class voiceprint_recognition:
                 waveforms = waveforms.to(device=self.device)
                 labels = labels.to(device=self.device)
                 features = self.transform(waveforms)
-                if self.use_model == 'ERes2Net' and self.use_feature_extraction == 'MFCC':
-                    features = torch.transpose(features, 1, 2)
                 identities = self.model.backbone(features)
                 outputs = self.model.classifier(identities)
                 all_labels = torch.cat([all_labels, labels], dim=0)

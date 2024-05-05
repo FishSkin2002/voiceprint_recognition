@@ -38,6 +38,7 @@ if __name__ == "__main__":
     }
     feature_extraction_cfg = {
         'use_mfcc_cms': True,
+        'feature_transpose': False,
         'feature_extraction_cfg': {
             'Spectrogram': {
                 'n_fft': 1024,

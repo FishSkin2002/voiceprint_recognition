@@ -11,12 +11,14 @@ class feature_transform(nn.Module):
                  use_feature_extraction,
                  use_mfcc_cms,
                  feature_extraction_cfg,
+                 feature_transpose=False,
                  Augmentations_cfg=None):
         super().__init__()
         self.use_feature_extraction = use_feature_extraction
         self.feature_extraction_cfg = feature_extraction_cfg
         self.use_mfcc_cms = use_mfcc_cms
         self.Augmentations_cfg = Augmentations_cfg
+        self.feature_transpose = feature_transpose
 
         if self.use_feature_extraction == 'Spectrogram':
             self.extractor = T.Spectrogram(**self.feature_extraction_cfg['Spectrogram'])
@@ -43,6 +45,9 @@ class feature_transform(nn.Module):
 
             if self.Augmentations_cfg:
                 self.aug(features)
+
+            if self.feature_transpose:
+                features = torch.transpose(features, 1, 2)
 
         return features
 
