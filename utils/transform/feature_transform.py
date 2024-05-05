@@ -21,9 +21,9 @@ class feature_transform(nn.Module):
         self.feature_transpose = feature_transpose
 
         if self.use_feature_extraction == 'Spectrogram':
-            self.extractor = T.Spectrogram(**self.feature_extraction_cfg.get('Spectrogram'))
+            self.extractor = T.Spectrogram(**self.feature_extraction_cfg.get('Spectrogram', {}))
         elif self.use_feature_extraction == 'MFCC':
-            self.extractor = T.MFCC(**self.feature_extraction_cfg.get('MFCC'))
+            self.extractor = T.MFCC(**self.feature_extraction_cfg.get('MFCC', {}))
         elif self.use_feature_extraction == 'fbank':
             pass
         else:
@@ -54,6 +54,6 @@ class feature_transform(nn.Module):
     def __cal_fbank(self, waveforms):
         features = torch.empty(0)
         for i in range(waveforms.shape[0]):
-            feature = fbank(waveforms[i], **self.feature_extraction_cfg.get('fank')).unsqueeze(0)
+            feature = fbank(waveforms[i], **self.feature_extraction_cfg.get('fank', {})).unsqueeze(0)
             features = torch.cat([features, feature], dim=0)
         return features
