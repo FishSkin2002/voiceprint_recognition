@@ -204,9 +204,9 @@ class voiceprint_recognition:
     def evaluate(self):
         print('验证阶段开始')
         self.model.eval()
-        all_outputs = torch.empty(0)
-        all_labels = torch.empty(0)
-        all_identities = torch.empty(0)
+        all_outputs = torch.empty(0, device=self.device)
+        all_labels = torch.empty(0, device=self.device)
+        all_identities = torch.empty(0, device=self.device)
         with torch.no_grad():
             print('正在处理验证集……')
             for waveforms, labels in self.dev_loader:

@@ -93,9 +93,9 @@ if __name__ == "__main__":
     with torch.no_grad():
         for i in range(10):
             print(f'正在进行第{i + 1}轮测试')
-            all_outputs = torch.empty(0)
-            all_labels = torch.empty(0)
-            all_identities = torch.empty(0)
+            all_outputs = torch.empty(0, device=device)
+            all_labels = torch.empty(0, device=device)
+            all_identities = torch.empty(0, device=device)
             for waveforms, labels in tqdm(test_loader, desc='计算特征'):
                 waveforms = waveforms.to(device=device)
                 labels = labels.to(device=device)
