@@ -136,7 +136,7 @@ class voiceprint_recognition:
         if self.use_lr_scheduler == 'CyclicLR':
             self.scheduler = optim.lr_scheduler.CyclicLR(self.optimizer,
                                                          **self.scheduler_cfg.get('CyclicLR', {}))
-        if self.use_lr_scheduler == 'CosineAnnealingLR':
+        elif self.use_lr_scheduler == 'CosineAnnealingLR':
             self.scheduler = optim.lr_scheduler.CosineAnnealingLR(self.optimizer,
                                                                   **self.scheduler_cfg.get('CosineAnnealingLR', {}))
         else:
