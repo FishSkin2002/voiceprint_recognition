@@ -54,6 +54,9 @@ if __name__ == "__main__":
                     'hop_length': 160,
                     'n_mels': 80
                 }
+            },
+            'fbank': {
+                'num_mel_bin': 80
             }
         },
         'Augmentations_cfg': {

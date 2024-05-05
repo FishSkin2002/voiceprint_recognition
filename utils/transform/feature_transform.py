@@ -1,6 +1,7 @@
 import torch
 import torchaudio.transforms as T
 from torch import nn
+from torchaudio.compliance.kaldi import fbank
 
 from utils.transform.Augmentations import Augmentations
 
@@ -10,7 +11,7 @@ class feature_transform(nn.Module):
                  use_feature_extraction,
                  use_mfcc_cms,
                  feature_extraction_cfg,
-                 Augmentations_cfg):
+                 Augmentations_cfg=None):
         super().__init__()
         self.use_feature_extraction = use_feature_extraction
         self.feature_extraction_cfg = feature_extraction_cfg
@@ -21,21 +22,33 @@ class feature_transform(nn.Module):
             self.extractor = T.Spectrogram(**self.feature_extraction_cfg['Spectrogram'])
         elif self.use_feature_extraction == 'MFCC':
             self.extractor = T.MFCC(**self.feature_extraction_cfg['MFCC'])
+        elif self.use_feature_extraction == 'fbank':
+            pass
         else:
             raise ValueError(f'不支持{self.use_feature_extraction}特征提取方式')
 
         if self.Augmentations_cfg:
             self.aug = Augmentations(**self.Augmentations_cfg)
 
-    def forward(self, waveform):
+    def forward(self, waveforms):
         with torch.no_grad():
-            feature = self.extractor(waveform)
+            if self.use_feature_extraction == 'fbank':
+                features = self.__cal_fbank(waveforms)
+            else:
+                features = self.extractor(waveforms)
 
             if self.use_mfcc_cms and self.use_feature_extraction == 'MFCC':
-                mfcc_mean = torch.mean(feature, dim=-1, keepdim=True)
-                feature = feature - mfcc_mean
+                mfcc_mean = torch.mean(features, dim=-1, keepdim=True)
+                features = features - mfcc_mean
 
             if self.Augmentations_cfg:
-                self.aug(feature)
+                self.aug(features)
 
-        return feature
+        return features
+
+    def __cal_fbank(self, waveforms):
+        features = torch.empty(0)
+        for i in range(waveforms.shape[0]):
+            feature = fbank(waveforms[i], **self.feature_extraction_cfg['fbank']).unsqueeze(0)
+            features = torch.cat([features, feature], dim=0)
+        return features
