@@ -146,7 +146,6 @@ class voiceprint_recognition:
         print(f'开始Epoch[{now_epoch}/{self.train_epoch}]的训练……')
         all_loss = []
         for batch_id, (waveforms, labels) in enumerate(self.train_loader):
-            self.total_train_step += 1
             self.optimizer.zero_grad()
             waveforms = waveforms.to(device=self.device)
             labels = labels.to(device=self.device)
@@ -172,6 +171,7 @@ class voiceprint_recognition:
             self.writer.add_scalar(tag='train/learning_rate',
                                    scalar_value=self.scheduler.get_last_lr()[0],
                                    global_step=self.total_train_step)
+            self.total_train_step += 1
 
     def __save_model(self, now_epoch, acc, eer, eer_threshold, min_dcf, min_dcf_threshold):
         model_path = os.path.join(self.save_model_path, self.use_model, f'epoch_{now_epoch}')
@@ -236,7 +236,6 @@ class voiceprint_recognition:
                   f'EER threshold: {eer_threshold:.8f}    '
                   f'minDCF: {min_dcf:.8f}    '
                   f'minDCF threshold: {min_dcf_threshold:.8f}')
-            self.total_dev_step += 1
             self.writer.add_scalar(tag='dev/ACC',
                                    scalar_value=acc,
                                    global_step=self.total_dev_step)
@@ -252,4 +251,5 @@ class voiceprint_recognition:
             self.writer.add_scalar(tag='dev/minDCF_threshold',
                                    scalar_value=min_dcf_threshold,
                                    global_step=self.total_dev_step)
+            self.total_dev_step += 1
             return acc, eer, eer_threshold, min_dcf, min_dcf_threshold

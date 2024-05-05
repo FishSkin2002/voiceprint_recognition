@@ -12,18 +12,18 @@ from utils.models.ECAPA_TDNN import ECAPA_TDNN
 from utils.transform.feature_transform import feature_transform
 
 model_path = os.path.join('C:/Users/24667/Documents/毕设数据/',
-                          '2024_05_04_17_01_45/2024_05_04_17_01_45/ECAPA_TDNN/best_model/ECAPA_TDNN.pth')
+                          '2024_05_04_14_21_55/trained_models/2024_05_04_14_21_55/ECAPA_TDNN/best_model/ECAPA_TDNN.pth')
 use_feature_extraction = 'MFCC'
-log_dir = os.path.join('./logs', 'ECAPA-TDNN_1024_AAMLoss_无噪训练_带噪测试')
+log_dir = os.path.join('./logs')
 dataset_cfg = {
     'data_path': './dataset/LibriSpeech',
     'preprocess_cfg': {
         'max_duration': 3,
         'target_sample_rate': 16000,
         'keep_audio_channel': False,
-        'use_speed_perturbation': True,
+        'use_speed_perturbation': False,
         'speed_perturbation_sequence': (0.9, 0.95, 1, 1.05, 1.1),
-        'add_noise': True,
+        'add_noise': False,
         'max_snr': 50,
         'min_snr': 10
     },
@@ -85,7 +85,7 @@ if __name__ == "__main__":
     test_set, test_loader = set_data(dataset_cfg, dataloader_cfg)
     transform = feature_transform(use_feature_extraction, **feature_extraction_cfg)
     transform = transform.to(device=device)
-    model = ECAPA_TDNN(**model_cfg['ECAPA_TDNN'])
+    model = ECAPA_TDNN(**model_cfg.get('ECAPA_TDNN', {}))
     model = model.to(device=device)
     model.eval()
     model.load_state_dict(torch.load(model_path))
@@ -93,7 +93,6 @@ if __name__ == "__main__":
     with torch.no_grad():
         for i in range(10):
             print(f'正在进行第{i + 1}轮测试')
-            all_outputs = torch.empty(0, device=device)
             all_labels = torch.empty(0, device=device)
             all_identities = torch.empty(0, device=device)
             for waveforms, labels in tqdm(test_loader, desc='计算特征'):
@@ -104,7 +103,7 @@ if __name__ == "__main__":
                 all_labels = torch.cat([all_labels, labels], dim=0)
                 all_identities = torch.cat([all_identities, identities], dim=0)
             print('正在计算模型指标……')
-            all_identities = F.normalize(all_identities, dim=0)
+            all_identities = F.normalize(all_identities, dim=-1)
             score_matrix = F.linear(all_identities, all_identities)
             labels_matrix = torch.eq(all_labels.unsqueeze(0), all_labels.unsqueeze(1))
             all_score = score_matrix.view(-1)
@@ -118,15 +117,15 @@ if __name__ == "__main__":
                   f'minDCF threshold: {min_dcf_threshold:.8f}')
             writer.add_scalar(tag='test/EER',
                               scalar_value=eer,
-                              global_step=i + 1)
+                              global_step=i)
             writer.add_scalar(tag='test/EER_threshold',
                               scalar_value=eer_threshold,
-                              global_step=i + 1)
+                              global_step=i)
             writer.add_scalar(tag='test/minDCF',
                               scalar_value=min_dcf,
-                              global_step=i + 1)
+                              global_step=i)
             writer.add_scalar(tag='test/minDCF_threshold',
                               scalar_value=min_dcf_threshold,
-                              global_step=i + 1)
+                              global_step=i)
             del all_identities, all_labels, score_matrix, labels_matrix
             torch.cuda.empty_cache()
