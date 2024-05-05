@@ -101,11 +101,11 @@ class voiceprint_recognition:
             summary(self.model, input_size=[2, 80, 201])
         elif self.use_model == 'ERes2Net':
             self.model = nn.Sequential(OrderedDict([
-                ('backbone', ERes2Net()),
+                ('backbone', ERes2Net(**self.model_cfg.get('ERes2Net'))),
                 ('classifier', cosine_classifier(self.num_speaker))
             ]))
             self.model = self.model.to(device=self.device)
-            summary(self.model, input_size=[2, 40, 80])
+            summary(self.model, input_size=[2, 298, 80])
         else:
             raise ValueError(f'不支持{self.use_model}模型')
 
@@ -115,9 +115,9 @@ class voiceprint_recognition:
         elif self.use_loss == 'NLLoss':
             self.criterion = nn.NLLLoss()
         elif self.use_loss == 'AAMLoss':
-            self.criterion = AAMLoss(self.num_speaker)
+            self.criterion = AAMLoss(self.num_speaker, **self.model_cfg.get('AAMLoss'))
         elif self.use_loss == 'AMLoss':
-            self.criterion = AMLoss(self.num_speaker)
+            self.criterion = AMLoss(self.num_speaker, **self.model_cfg.get('AMLoss'))
         else:
             raise ValueError(f'不支持{self.use_loss}损失函数')
         self.criterion = self.criterion.to(device=self.device)
@@ -128,11 +128,17 @@ class voiceprint_recognition:
                 {'params': self.model.backbone.parameters(), 'weight_decay': 2e-5},
                 {'params': self.model.classifier.parameters(), 'weight_decay': 2e-4}
             ])
+        elif self.use_optimizer == 'SGD':
+            self.optimizer = optim.SGD(params=self.model.parameters(), momentum=0.9, weight_decay=1e-4)
         else:
             raise ValueError(f'不支持{self.use_optimizer}优化器')
 
         if self.use_lr_scheduler == 'CyclicLR':
-            self.scheduler = optim.lr_scheduler.CyclicLR(self.optimizer, **self.scheduler_cfg)
+            self.scheduler = optim.lr_scheduler.CyclicLR(self.optimizer,
+                                                         **self.scheduler_cfg.get('CyclicLR'))
+        if self.use_lr_scheduler == 'CosineAnnealingLR':
+            self.scheduler = optim.lr_scheduler.CosineAnnealingLR(self.optimizer,
+                                                                  **self.scheduler_cfg.get('CosineAnnealingLR'))
         else:
             raise ValueError(f'不支持{self.use_lr_scheduler}学习率衰减方法')
 

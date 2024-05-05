@@ -68,20 +68,28 @@ if __name__ == "__main__":
             'iid_masks': True
         }
     }
-
     model_cfg = {
         'ECAPA_TDNN': {
             'channels': 512,
             'bottleneck': 128,
             'scale': 8
+        },
+        'AAMLoss': {
+            'scale': 30,
+            'margin': 0.2
         }
     }
     scheduler_cfg = {
-        'base_lr': 1e-8,
-        'max_lr': 1e-3,
-        'step_size_up': 10000,
-        'mode': 'triangular2',
-        'cycle_momentum': False
+        'CyclicLR': {
+            'base_lr': 1e-8,
+            'max_lr': 1e-3,
+            'step_size_up': 10000,
+            'mode': 'triangular2',
+            'cycle_momentum': False
+        },
+        'CosineAnnealingLR': {
+            'T_max': 10000
+        }
     }
     voiceprint_recognition = voiceprint_recognition(**train_cfg,
                                                     dataset_cfg=dataset_cfg,
