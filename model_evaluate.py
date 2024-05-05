@@ -7,14 +7,15 @@ from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
 from utils.data.LibriSpeech_set import LibriSpeech_set
+from utils.download.ERes2Net import ERes2Net
 from utils.metrics import cal_fpr_fnr, cal_eer_threshold, cal_min_dcf_threshold
 from utils.models.ECAPA_TDNN import ECAPA_TDNN
 from utils.transform.feature_transform import feature_transform
 
 model_path = os.path.join('C:/Users/24667/Documents/毕设数据/',
-                          '2024_05_04_14_21_55/trained_models/2024_05_04_14_21_55/ECAPA_TDNN/best_model/ECAPA_TDNN.pth')
+                          'ERes2Net_MFCC_AAMLoss/2024_05_04_20_10_38/ERes2Net/best_model/ERes2Net.pth')
 use_feature_extraction = 'MFCC'
-log_dir = os.path.join('./logs')
+log_dir = os.path.join('./logs', 'ERes2Net特征提取对比', 'MFCC')
 dataset_cfg = {
     'data_path': './dataset/LibriSpeech',
     'preprocess_cfg': {
@@ -29,12 +30,13 @@ dataset_cfg = {
     },
 }
 dataloader_cfg = {
-    'batch_size': 128,
+    'batch_size': 64,
     'num_workers': 16,
     'pin_memory': True
 }
 feature_extraction_cfg = {
     'use_mfcc_cms': True,
+    'feature_transpose': True,
     'feature_extraction_cfg': {
         'Spectrogram': {
             'n_fft': 1024,
@@ -51,6 +53,9 @@ feature_extraction_cfg = {
                 'hop_length': 160,
                 'n_mels': 80
             }
+        },
+        'fbank': {
+            'num_mel_bins': 80
         }
     },
     'Augmentations_cfg': {
@@ -63,7 +68,7 @@ feature_extraction_cfg = {
 }
 model_cfg = {
     'ECAPA_TDNN': {
-        'channels': 1024,
+        'channels': 512,
         'bottleneck': 128,
         'scale': 8
     }
@@ -72,7 +77,7 @@ model_cfg = {
 
 def set_data(_dataset_cfg, _dataloader_cfg):
     _test_set = LibriSpeech_set('test-other', **dataset_cfg)
-    _test_loader = DataLoader(_test_set, shuffle=True, **dataloader_cfg)
+    _test_loader = DataLoader(_test_set, shuffle=False, **dataloader_cfg)
     return _test_set, _test_loader
 
 
@@ -85,13 +90,15 @@ if __name__ == "__main__":
     test_set, test_loader = set_data(dataset_cfg, dataloader_cfg)
     transform = feature_transform(use_feature_extraction, **feature_extraction_cfg)
     transform = transform.to(device=device)
-    model = ECAPA_TDNN(**model_cfg.get('ECAPA_TDNN', {}))
+    # model = ECAPA_TDNN(**model_cfg.get('ECAPA_TDNN', {}))
+    # model = model.to(device=device)
+    model = ERes2Net(**model_cfg.get('ERes2Net', {}))
     model = model.to(device=device)
     model.eval()
     model.load_state_dict(torch.load(model_path))
     writer = SummaryWriter(log_dir)
     with torch.no_grad():
-        for i in range(10):
+        for i in range(5):
             print(f'正在进行第{i + 1}轮测试')
             all_labels = torch.empty(0, device=device)
             all_identities = torch.empty(0, device=device)
@@ -117,15 +124,15 @@ if __name__ == "__main__":
                   f'minDCF threshold: {min_dcf_threshold:.8f}')
             writer.add_scalar(tag='test/EER',
                               scalar_value=eer,
-                              global_step=i)
+                              global_step=i + 1)
             writer.add_scalar(tag='test/EER_threshold',
                               scalar_value=eer_threshold,
-                              global_step=i)
+                              global_step=i + 1)
             writer.add_scalar(tag='test/minDCF',
                               scalar_value=min_dcf,
-                              global_step=i)
+                              global_step=i + 1)
             writer.add_scalar(tag='test/minDCF_threshold',
                               scalar_value=min_dcf_threshold,
-                              global_step=i)
+                              global_step=i + 1)
             del all_identities, all_labels, score_matrix, labels_matrix
             torch.cuda.empty_cache()

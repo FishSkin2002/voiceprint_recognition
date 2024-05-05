@@ -29,7 +29,7 @@ class voiceprint_recognition:
                  train_epoch,
                  dataset_cfg,
                  dataloader_cfg,
-                 feature_extraction_cfg,
+                 transform_cfg,
                  model_cfg,
                  scheduler_cfg,
                  logdir='./logs',
@@ -61,7 +61,7 @@ class voiceprint_recognition:
         self.best_eer = 1
         self.dataset_cfg = dataset_cfg
         self.dataloader_cfg = dataloader_cfg
-        self.feature_extraction_cfg = feature_extraction_cfg
+        self.transform_cfg = transform_cfg
         self.model_cfg = model_cfg
         self.scheduler_cfg = scheduler_cfg
 
@@ -88,7 +88,7 @@ class voiceprint_recognition:
         self.dev_loader = DataLoader(self.dev_set, shuffle=False, **self.dataloader_cfg)
 
     def __set_feature_extractor(self):
-        self.transform = feature_transform(self.use_feature_extraction, **self.feature_extraction_cfg)
+        self.transform = feature_transform(self.use_feature_extraction, **self.transform_cfg)
         self.transform = self.transform.to(device=self.device)
 
     def __set_model(self):
@@ -129,7 +129,7 @@ class voiceprint_recognition:
                 {'params': self.model.classifier.parameters(), 'weight_decay': 2e-4}
             ])
         elif self.use_optimizer == 'SGD':
-            self.optimizer = optim.SGD(params=self.model.parameters(), momentum=0.9, weight_decay=1e-4)
+            self.optimizer = optim.SGD(params=self.model.parameters(), lr=0.2, momentum=0.9, weight_decay=1e-4)
         else:
             raise ValueError(f'不支持{self.use_optimizer}优化器')
 
@@ -146,6 +146,7 @@ class voiceprint_recognition:
         print(f'开始Epoch[{now_epoch}/{self.train_epoch}]的训练……')
         all_loss = []
         for batch_id, (waveforms, labels) in enumerate(self.train_loader):
+            self.total_train_step += 1
             self.optimizer.zero_grad()
             waveforms = waveforms.to(device=self.device)
             labels = labels.to(device=self.device)
@@ -171,7 +172,6 @@ class voiceprint_recognition:
             self.writer.add_scalar(tag='train/learning_rate',
                                    scalar_value=self.scheduler.get_last_lr()[0],
                                    global_step=self.total_train_step)
-            self.total_train_step += 1
 
     def __save_model(self, now_epoch, acc, eer, eer_threshold, min_dcf, min_dcf_threshold):
         model_path = os.path.join(self.save_model_path, self.use_model, f'epoch_{now_epoch}')
@@ -209,6 +209,7 @@ class voiceprint_recognition:
         all_identities = torch.empty(0, device=self.device)
         with torch.no_grad():
             print('正在处理验证集……')
+            self.total_dev_step += 1
             for waveforms, labels in self.dev_loader:
                 waveforms = waveforms.to(device=self.device)
                 labels = labels.to(device=self.device)
@@ -251,5 +252,4 @@ class voiceprint_recognition:
             self.writer.add_scalar(tag='dev/minDCF_threshold',
                                    scalar_value=min_dcf_threshold,
                                    global_step=self.total_dev_step)
-            self.total_dev_step += 1
             return acc, eer, eer_threshold, min_dcf, min_dcf_threshold

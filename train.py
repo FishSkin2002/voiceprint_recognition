@@ -36,7 +36,7 @@ if __name__ == "__main__":
         'num_workers': 16,
         'pin_memory': True
     }
-    feature_extraction_cfg = {
+    transform_cfg = {
         'use_mfcc_cms': True,
         'feature_transpose': False,
         'feature_extraction_cfg': {
@@ -57,7 +57,7 @@ if __name__ == "__main__":
                 }
             },
             'fbank': {
-                'num_mel_bin': 80
+                'num_mel_bins': 80
             }
         },
         'Augmentations_cfg': {
@@ -94,7 +94,7 @@ if __name__ == "__main__":
     voiceprint_recognition = voiceprint_recognition(**train_cfg,
                                                     dataset_cfg=dataset_cfg,
                                                     dataloader_cfg=dataloader_cfg,
-                                                    feature_extraction_cfg=feature_extraction_cfg,
+                                                    transform_cfg=transform_cfg,
                                                     model_cfg=model_cfg,
                                                     scheduler_cfg=scheduler_cfg)
     voiceprint_recognition.train()

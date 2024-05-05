@@ -43,17 +43,20 @@ class feature_transform(nn.Module):
                 mfcc_mean = torch.mean(features, dim=-1, keepdim=True)
                 features = features - mfcc_mean
 
+            if self.feature_transpose and self.use_feature_extraction == 'fbank':
+                features = torch.transpose(features, 1, 2)
+
             if self.Augmentations_cfg:
                 self.aug(features)
 
-            if self.feature_transpose:
+            if self.feature_transpose and self.use_feature_extraction != 'fbank':
                 features = torch.transpose(features, 1, 2)
 
         return features
 
     def __cal_fbank(self, waveforms):
-        features = torch.empty(0)
+        features = torch.empty(0, device=waveforms.device)
         for i in range(waveforms.shape[0]):
-            feature = fbank(waveforms[i], **self.feature_extraction_cfg.get('fank', {})).unsqueeze(0)
+            feature = fbank(waveforms[i], **self.feature_extraction_cfg.get('fbank', {})).unsqueeze(0).unsqueeze(0)
             features = torch.cat([features, feature], dim=0)
         return features
