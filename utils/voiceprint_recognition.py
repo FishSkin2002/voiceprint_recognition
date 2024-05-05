@@ -145,7 +145,7 @@ class voiceprint_recognition:
             waveforms = waveforms.to(device=self.device)
             labels = labels.to(device=self.device)
             features = self.transform(waveforms)
-            if self.use_model == 'ERes2Net':
+            if self.use_model == 'ERes2Net' and self.use_feature_extraction == 'MFCC':
                 features = torch.transpose(features, 1, 2)
             outputs = self.model(features)
             labels = labels.to(device=self.device)
@@ -200,35 +200,22 @@ class voiceprint_recognition:
     def evaluate(self):
         print('验证阶段开始')
         self.model.eval()
-        all_outputs = None
-        all_labels = None
-        all_identities = None
+        all_outputs = torch.empty(0)
+        all_labels = torch.empty(0)
+        all_identities = torch.empty(0)
         with torch.no_grad():
             print('正在处理验证集……')
             for waveforms, labels in self.dev_loader:
                 waveforms = waveforms.to(device=self.device)
                 labels = labels.to(device=self.device)
                 features = self.transform(waveforms)
-                if self.use_model == 'ERes2Net':
+                if self.use_model == 'ERes2Net' and self.use_feature_extraction == 'MFCC':
                     features = torch.transpose(features, 1, 2)
                 identities = self.model.backbone(features)
                 outputs = self.model.classifier(identities)
-
-                if all_labels is None:
-                    all_labels = labels
-                else:
-                    all_labels = torch.cat([all_labels, labels], dim=0)
-
-                if all_identities is None:
-                    all_identities = identities
-                else:
-                    all_identities = torch.cat([all_identities, identities], dim=0)
-
-                if all_outputs is None:
-                    all_outputs = outputs
-                else:
-                    all_outputs = torch.cat([all_outputs, outputs], dim=0)
-
+                all_labels = torch.cat([all_labels, labels], dim=0)
+                all_identities = torch.cat([all_identities, identities], dim=0)
+                all_outputs = torch.cat([all_outputs, outputs], dim=0)
             print('验证集处理完毕')
             print('正在计算模型指标……')
             acc = accuracy(all_outputs, all_labels)
