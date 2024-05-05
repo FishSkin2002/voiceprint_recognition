@@ -6,7 +6,7 @@ import torch
 from utils.voiceprint_recognition import voiceprint_recognition
 
 if __name__ == "__main__":
-    timestr = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
+    timestr = datetime.now().strftime("%Y%m%d_%H%M%S")
     train_cfg = {
         'use_gpu': True,
         'use_feature_extraction': 'MFCC',
